@@ -1,68 +1,117 @@
-import { app, BrowserWindow } from 'electron'
-import { createRequire } from 'node:module'
-import { fileURLToPath } from 'node:url'
-import path from 'node:path'
+import { app, BrowserWindow, ipcMain } from "electron";
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+import type { CreateWorkspaceInput } from "@shared/types/Workspace";
+import { createSqliteConnection, type SqliteDatabase } from "@core/db/SqliteConnection";
+import { SqliteMigrationRunner } from "@core/db/SqliteMigrationRunner";
+import { SqliteWorkspaceRepository } from "@core/repositories/workspace/WorkspaceRepositoryImpl";
+import { AppBootstrapService } from "@core/services/AppBootstrapService";
+import { WorkspaceService } from "@core/services/WorkspaceService";
 
-const require = createRequire(import.meta.url)
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// The built directory structure
-//
-// ├─┬─┬ dist
-// │ │ └── index.html
-// │ │
-// │ ├─┬ dist-electron
-// │ │ ├── main.js
-// │ │ └── preload.mjs
-// │
-process.env.APP_ROOT = path.join(__dirname, '..')
+process.env.APP_ROOT = path.join(__dirname, "..");
 
-// 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
-export const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
-export const MAIN_DIST = path.join(process.env.APP_ROOT, 'dist-electron')
-export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
+export const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
+export const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
+export const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
 
-process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 'public') : RENDERER_DIST
+process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
+  ? path.join(process.env.APP_ROOT, "public")
+  : RENDERER_DIST;
 
-let win: BrowserWindow | null
+interface MainContainer {
+  db: SqliteDatabase;
+  workspaceService: WorkspaceService;
+}
 
-function createWindow() {
-  win = new BrowserWindow({
-    icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.mjs'),
+let win: BrowserWindow | null;
+let container: MainContainer | null = null;
+
+async function createContainer(): Promise<MainContainer> {
+  const bootstrap = new AppBootstrapService();
+  const appPaths = await bootstrap.init();
+  const db = createSqliteConnection(appPaths.databasePath);
+
+  new SqliteMigrationRunner(db, resolveMigrationsDir()).run();
+
+  const workspaceRepository = new SqliteWorkspaceRepository(db);
+  const workspaceService = new WorkspaceService(
+    workspaceRepository,
+    appPaths.workspacesPath,
+  );
+
+  return {
+    db,
+    workspaceService,
+  };
+}
+
+function resolveMigrationsDir(): string {
+  const sourceMigrationsDir = path.join(
+    process.env.APP_ROOT,
+    "electron",
+    "core",
+    "db",
+    "migrations",
+  );
+
+  if (existsSync(sourceMigrationsDir)) {
+    return sourceMigrationsDir;
+  }
+
+  return path.join(process.resourcesPath, "migrations");
+}
+
+function registerIpcHandlers(dependencies: MainContainer): void {
+  ipcMain.handle("workspace:list", () => {
+    return dependencies.workspaceService.listWorkspaces();
+  });
+
+  ipcMain.handle(
+    "workspace:create",
+    (_event, input: CreateWorkspaceInput) => {
+      return dependencies.workspaceService.createWorkspace(input);
     },
-  })
+  );
+}
 
-  // Test active push message to Renderer-process.
-  win.webContents.on('did-finish-load', () => {
-    win?.webContents.send('main-process-message', (new Date).toLocaleString())
-  })
+function createWindow(): void {
+  win = new BrowserWindow({
+    icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
+    webPreferences: {
+      preload: path.join(__dirname, "preload.mjs"),
+    },
+  });
 
   if (VITE_DEV_SERVER_URL) {
-    win.loadURL(VITE_DEV_SERVER_URL)
+    win.loadURL(VITE_DEV_SERVER_URL);
   } else {
-    // win.loadFile('dist/index.html')
-    win.loadFile(path.join(RENDERER_DIST, 'index.html'))
+    win.loadFile(path.join(RENDERER_DIST, "index.html"));
   }
 }
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
-    win = null
-  }
-})
+app.on("before-quit", () => {
+  container?.db.close();
+  container = null;
+});
 
-app.on('activate', () => {
-  // On OS X it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
+    app.quit();
+    win = null;
+  }
+});
+
+app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow()
+    createWindow();
   }
-})
+});
 
-app.whenReady().then(createWindow)
+app.whenReady().then(async () => {
+  container = await createContainer();
+  registerIpcHandlers(container);
+  createWindow();
+});

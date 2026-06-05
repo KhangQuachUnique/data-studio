@@ -11,14 +11,17 @@ Phase 1 - Project setup.
 - Repo Electron + React + TypeScript scaffold.
 - `package.json` includes Vite, Electron, React, and build/lint scripts.
 - The original DataPrep Studio idea has been saved in `project/context/master-idea.md`.
+- The renderer is organized into `app`, `pages`, `features`, and `shared`.
 
 ## In Progress
 
 - Create project memory under `project/`.
-- Create the local backend foundation: workspace service, SQLite connection, migration runner, and first migration.
+- Create the local backend foundation: app bootstrap, SQLite connection, migration runner, workspace repository, and workspace service.
 - Connect initialization to Electron app startup.
+- Add the first safe renderer API through `window.api` for workspace list/create.
+- Keep the current workspace screen behavior while preparing the frontend for more modules.
 
 ## Next
 
-- Complete Phase 1 with build verification.
-- After Phase 1, move to Phase 2 - Dataset import.
+- Verify workspace list/create from the minimal React UI.
+- After workspace IPC is stable, move to the first data-source import workflow.

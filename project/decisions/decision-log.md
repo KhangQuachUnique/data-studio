@@ -35,3 +35,12 @@ Reasons:
 - The app is currently a local desktop app.
 - Reduces operational complexity.
 - Avoids adding a Python worker/backend before it is needed.
+
+## 2026-06-05 - Feature-based frontend structure
+
+The React renderer uses a feature-based structure with `app`, `pages`, `features`, and `shared`.
+
+Reasons:
+- Keeps page-level composition separate from workspace business UI.
+- Keeps `window.api` calls inside feature API wrappers instead of React components.
+- Leaves room for future features such as data sources, profiling, cleaning, and export.

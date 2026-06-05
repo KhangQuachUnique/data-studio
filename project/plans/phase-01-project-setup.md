@@ -2,18 +2,17 @@
 
 ## Goal
 
-Set up the local-first foundation for DataPrep Studio: local workspace, SQLite metadata database, and the first migration running during Electron app startup.
+Set up the local-first foundation for DataPrep Studio: app storage, multi-workspace project folders, SQLite metadata database, and the first migration running during Electron app startup.
 
 ## Tasks
 
 - Install `better-sqlite3` and type definitions.
-- Create `WorkspaceService` to resolve and create:
+- Create app bootstrap and workspace services to resolve and create:
   - app data root
-  - `metadata.db`
-  - `workspace/datasets`
-  - `workspace/tmp`
-  - `workspace/exports`
-  - `logs`
+  - SQLite metadata database
+  - `workspaces`
+  - app-level `logs`
+  - per-workspace folders for raw data, DuckDB, queries, and exports
 - Create a SQLite connection helper:
   - enable foreign keys
   - enable WAL journal mode
@@ -23,19 +22,21 @@ Set up the local-first foundation for DataPrep Studio: local workspace, SQLite m
   - record applied migrations
 - Create migration `001_init.sql` with:
   - `schema_migrations`
-  - `datasets`
-  - `dataset_versions`
-  - `dataset_profiles`
-  - `cleaning_steps`
-  - `audit_logs`
+  - `workspaces`
+  - `data_sources`
+  - `saved_queries`
+  - `query_history`
+  - `app_settings`
 - Connect initialization to the Electron main process.
-- Replace the Vite template UI with a minimal app/workspace status screen.
-- Move preload toward `window.api`; do not expose raw `ipcRenderer`.
+- Register the first IPC handlers: `workspace:list` and `workspace:create`.
+- Replace the Vite template UI with a minimal workspace list/create screen.
+- Move preload to `window.api`; do not expose raw `ipcRenderer`.
 
 ## Acceptance Criteria
 
 - `npm run build` pass.
-- When the app starts, the workspace folder and `metadata.db` are created.
+- When the app starts, app storage, SQLite database, `workspaces`, and `logs` are created.
 - The first migration runs successfully.
-- The renderer can display startup status through `window.api.getAppStatus()`.
+- The renderer can list and create workspaces through `window.api`.
+- Creating a workspace writes SQLite metadata and creates the workspace folder structure.
 - The `project/` folder contains the initial project memory.

@@ -3,15 +3,17 @@ import path from "node:path";
 import electron from "vite-plugin-electron/simple";
 import react from "@vitejs/plugin-react";
 
+const alias = {
+  "@shared": path.resolve(__dirname, "shared"),
+  "@renderer": path.resolve(__dirname, "src"),
+  "@electron": path.resolve(__dirname, "electron"),
+  "@core": path.resolve(__dirname, "electron/core"),
+};
+
 // https://vitejs.dev/config/
 export default defineConfig({
   resolve: {
-    alias: {
-      "@shared": path.resolve(__dirname, "shared"),
-      "@renderer": path.resolve(__dirname, "src"),
-      "@electron": path.resolve(__dirname, "electron"),
-      "@core": path.resolve(__dirname, "electron/core"),
-    },
+    alias,
   },
   plugins: [
     react(),
@@ -20,11 +22,26 @@ export default defineConfig({
       main: {
         // Shortcut of `build.lib.entry`.
         entry: "electron/main.ts",
+        vite: {
+          resolve: {
+            alias,
+          },
+          build: {
+            rollupOptions: {
+              external: ["better-sqlite3"],
+            },
+          },
+        },
       },
       preload: {
         // Shortcut of `build.rollupOptions.input`.
         // Preload scripts may contain Web assets, so use the `build.rollupOptions.input` instead `build.lib.entry`.
         input: path.join(__dirname, "electron/preload.ts"),
+        vite: {
+          resolve: {
+            alias,
+          },
+        },
       },
       // Ployfill the Electron and Node.js API for Renderer process.
       // If you want use Node.js in Renderer process, the `nodeIntegration` needs to be enabled in the Main process.
