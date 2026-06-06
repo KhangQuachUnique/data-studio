@@ -3,13 +3,21 @@ import { WorkspaceListItem } from "./WorkspaceListItem";
 
 interface WorkspaceListProps {
   isLoading: boolean;
+  onArchiveWorkspace: (workspaceId: string) => Promise<void>;
+  onOpenFolder: (workspaceId: string) => Promise<void>;
   onRefresh: () => Promise<void>;
+  onSelectWorkspace: (workspaceId: string) => Promise<void>;
+  selectedWorkspaceId?: string;
   workspaces: Workspace[];
 }
 
 export function WorkspaceList({
   isLoading,
+  onArchiveWorkspace,
+  onOpenFolder,
   onRefresh,
+  onSelectWorkspace,
+  selectedWorkspaceId,
   workspaces,
 }: WorkspaceListProps) {
   return (
@@ -35,7 +43,14 @@ export function WorkspaceList({
 
       <ul>
         {workspaces.map((workspace) => (
-          <WorkspaceListItem key={workspace.id} workspace={workspace} />
+          <WorkspaceListItem
+            isSelected={workspace.id === selectedWorkspaceId}
+            key={workspace.id}
+            onArchiveWorkspace={onArchiveWorkspace}
+            onOpenFolder={onOpenFolder}
+            onSelectWorkspace={onSelectWorkspace}
+            workspace={workspace}
+          />
         ))}
       </ul>
     </div>

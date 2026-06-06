@@ -12,8 +12,21 @@ interface Window {
     listWorkspaces: () => Promise<
       import("@shared/types/Workspace").Workspace[]
     >;
+    getWorkspace: (
+      workspaceId: string,
+    ) => Promise<import("@shared/types/Workspace").WorkspaceDetail>;
+    getLastOpenedWorkspace: () => Promise<
+      import("@shared/types/Workspace").Workspace | null
+    >;
+    setLastOpenedWorkspace: (
+      workspaceId: string,
+    ) => Promise<import("@shared/types/Workspace").Workspace>;
     createWorkspace: (
       input: import("@shared/types/Workspace").CreateWorkspaceInput,
     ) => Promise<import("@shared/types/Workspace").Workspace>;
+    archiveWorkspace: (
+      workspaceId: string,
+    ) => Promise<import("@shared/types/Workspace").Workspace>;
+    openWorkspaceFolder: (workspaceId: string) => Promise<void>;
   };
 }

@@ -1,10 +1,11 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, shell } from "electron";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import type { CreateWorkspaceInput } from "@shared/types/Workspace";
 import { createSqliteConnection, type SqliteDatabase } from "@core/db/SqliteConnection";
 import { SqliteMigrationRunner } from "@core/db/SqliteMigrationRunner";
+import { SqliteAppSettingsRepository } from "@core/repositories/settings/SqliteAppSettingsRepository";
 import { SqliteWorkspaceRepository } from "@core/repositories/workspace/WorkspaceRepositoryImpl";
 import { AppBootstrapService } from "@core/services/AppBootstrapService";
 import { WorkspaceService } from "@core/services/WorkspaceService";
@@ -37,9 +38,11 @@ async function createContainer(): Promise<MainContainer> {
   new SqliteMigrationRunner(db, resolveMigrationsDir()).run();
 
   const workspaceRepository = new SqliteWorkspaceRepository(db);
+  const appSettingsRepository = new SqliteAppSettingsRepository(db);
   const workspaceService = new WorkspaceService(
     workspaceRepository,
     appPaths.workspacesPath,
+    appSettingsRepository,
   );
 
   return {
@@ -69,12 +72,36 @@ function registerIpcHandlers(dependencies: MainContainer): void {
     return dependencies.workspaceService.listWorkspaces();
   });
 
+  ipcMain.handle("workspace:get", (_event, workspaceId: string) => {
+    return dependencies.workspaceService.getWorkspaceDetail(workspaceId);
+  });
+
+  ipcMain.handle("workspace:get-last-opened", () => {
+    return dependencies.workspaceService.getLastOpenedWorkspace();
+  });
+
+  ipcMain.handle("workspace:set-last-opened", (_event, workspaceId: string) => {
+    return dependencies.workspaceService.setLastOpenedWorkspace(workspaceId);
+  });
+
   ipcMain.handle(
     "workspace:create",
     (_event, input: CreateWorkspaceInput) => {
       return dependencies.workspaceService.createWorkspace(input);
     },
   );
+
+  ipcMain.handle("workspace:archive", (_event, workspaceId: string) => {
+    return dependencies.workspaceService.archiveWorkspace(workspaceId);
+  });
+
+  ipcMain.handle("workspace:open-folder", async (_event, workspaceId: string) => {
+    const detail = await dependencies.workspaceService.getWorkspaceDetail(
+      workspaceId,
+    );
+
+    await shell.openPath(detail.workspace.path);
+  });
 }
 
 function createWindow(): void {

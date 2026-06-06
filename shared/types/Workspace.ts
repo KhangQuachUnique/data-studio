@@ -16,3 +16,15 @@ export interface CreateWorkspaceInput {
   name: string;
   description?: string;
 }
+
+export interface WorkspaceIntegrityCheck {
+  key: string;
+  label: string;
+  path: string;
+  exists: boolean;
+}
+
+export interface WorkspaceDetail {
+  workspace: Workspace;
+  integrity: WorkspaceIntegrityCheck[];
+}

@@ -20,8 +20,9 @@ Phase 1 - Project setup.
 - Connect initialization to Electron app startup.
 - Add the first safe renderer API through `window.api` for workspace list/create.
 - Keep the current workspace screen behavior while preparing the frontend for more modules.
+- Complete workspace management with current workspace selection, persisted last-opened workspace, integrity diagnostics, folder opening, and archive actions.
 
 ## Next
 
-- Verify workspace list/create from the minimal React UI.
+- Verify workspace create/list/select/archive/open-folder from the renderer UI.
 - After workspace IPC is stable, move to the first data-source import workflow.

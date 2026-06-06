@@ -23,7 +23,7 @@ export function WorkspaceDiagnostics({
       <div className="metric-card">
         <span>Total workspaces</span>
         <strong>{workspaces.length}</strong>
-        <p>Loaded from SQLite through IPC.</p>
+        <p>SQLite records loaded through IPC.</p>
       </div>
       <div className="metric-card">
         <span>Active</span>
@@ -33,7 +33,7 @@ export function WorkspaceDiagnostics({
       <div className="metric-card">
         <span>IPC status</span>
         <strong>{isLoading || isCreating ? "Busy" : "Ready"}</strong>
-        <p>Using `window.api` safe bridge.</p>
+        <p>Preload bridge is responding.</p>
       </div>
       <div className="metric-card">
         <span>Latest workspace</span>

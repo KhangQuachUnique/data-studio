@@ -29,6 +29,7 @@ Set up the local-first foundation for DataPrep Studio: app storage, multi-worksp
   - `app_settings`
 - Connect initialization to the Electron main process.
 - Register the first IPC handlers: `workspace:list` and `workspace:create`.
+- Extend workspace IPC with detail, last-opened selection, archive, and open-folder actions.
 - Replace the Vite template UI with a minimal workspace list/create screen.
 - Move preload to `window.api`; do not expose raw `ipcRenderer`.
 
@@ -39,4 +40,5 @@ Set up the local-first foundation for DataPrep Studio: app storage, multi-worksp
 - The first migration runs successfully.
 - The renderer can list and create workspaces through `window.api`.
 - Creating a workspace writes SQLite metadata and creates the workspace folder structure.
+- The renderer can select a current workspace, persist it in `app_settings`, inspect workspace integrity, open its folder, and archive it.
 - The `project/` folder contains the initial project memory.
