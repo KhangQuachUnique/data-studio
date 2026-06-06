@@ -29,6 +29,10 @@ export const workspaceApi = {
     return window.api.archiveWorkspace(workspaceId);
   },
 
+  unarchiveWorkspace(workspaceId: string): Promise<Workspace> {
+    return window.api.unarchiveWorkspace(workspaceId);
+  },
+
   openWorkspaceFolder(workspaceId: string): Promise<void> {
     return window.api.openWorkspaceFolder(workspaceId);
   },

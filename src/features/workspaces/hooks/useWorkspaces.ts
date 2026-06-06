@@ -99,6 +99,23 @@ export function useWorkspaces() {
     [loadWorkspaceDetail, loadWorkspaces, selectedWorkspaceDetail],
   );
 
+  const unarchiveWorkspace = useCallback(
+    async (workspaceId: string): Promise<void> => {
+      setError(null);
+
+      try {
+        const workspace = await workspaceApi.unarchiveWorkspace(workspaceId);
+        if (selectedWorkspaceDetail?.workspace.id === workspace.id) {
+          await loadWorkspaceDetail(workspace.id);
+        }
+        await loadWorkspaces();
+      } catch (unknownError) {
+        setError(getErrorMessage(unknownError));
+      }
+    },
+    [loadWorkspaceDetail, loadWorkspaces, selectedWorkspaceDetail],
+  );
+
   const openWorkspaceFolder = useCallback(
     async (workspaceId: string): Promise<void> => {
       setError(null);
@@ -140,5 +157,6 @@ export function useWorkspaces() {
     loadWorkspaces,
     openWorkspace,
     openWorkspaceFolder,
+    unarchiveWorkspace,
   };
 }

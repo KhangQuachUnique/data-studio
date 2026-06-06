@@ -70,7 +70,8 @@ CREATE TABLE IF NOT EXISTS data_sources (
 
   name TEXT NOT NULL,
 
-  -- CSV | EXCEL | PARQUET | JSON | SQLITE | POSTGRES
+  -- MVP supports CSV only.
+  -- More source types can be added by a later migration.
   type TEXT NOT NULL,
 
   -- Original file path selected by the user
@@ -95,7 +96,7 @@ CREATE TABLE IF NOT EXISTS data_sources (
     REFERENCES workspaces(id)
     ON DELETE CASCADE,
 
-  CHECK (type IN ('CSV', 'EXCEL', 'PARQUET', 'JSON', 'SQLITE', 'POSTGRES')),
+  CHECK (type IN ('CSV')),
   CHECK (status IN ('PENDING', 'READY', 'FAILED'))
 );
 

@@ -1,5 +1,8 @@
+import { DataSourcePanel } from "@renderer/features/data-sources/components/DataSourcePanel";
+import { useDataSources } from "@renderer/features/data-sources/hooks/useDataSources";
 import { CurrentWorkspacePanel } from "@renderer/features/workspaces/components/CurrentWorkspacePanel";
 import type { useWorkspaces } from "@renderer/features/workspaces/hooks/useWorkspaces";
+import type { WorkspaceDetail } from "@shared/types/Workspace";
 
 type WorkspaceState = ReturnType<typeof useWorkspaces>;
 
@@ -8,18 +11,39 @@ interface WorkspaceShellPageProps {
 }
 
 export function WorkspaceShellPage({ workspaceState }: WorkspaceShellPageProps) {
-  const {
-    selectedWorkspaceDetail,
-    archiveWorkspace,
-    closeWorkspace,
-    openWorkspaceFolder,
-  } = workspaceState;
+  const { selectedWorkspaceDetail } = workspaceState;
 
   if (!selectedWorkspaceDetail) {
     return null;
   }
 
+  return (
+    <WorkspaceShellContent
+      selectedWorkspaceDetail={selectedWorkspaceDetail}
+      workspaceState={workspaceState}
+    />
+  );
+}
+
+interface WorkspaceShellContentProps {
+  selectedWorkspaceDetail: WorkspaceDetail;
+  workspaceState: WorkspaceState;
+}
+
+function WorkspaceShellContent({
+  selectedWorkspaceDetail,
+  workspaceState,
+}: WorkspaceShellContentProps) {
+  const {
+    archiveWorkspace,
+    closeWorkspace,
+    openWorkspaceFolder,
+    unarchiveWorkspace,
+  } = workspaceState;
+
   const workspace = selectedWorkspaceDetail.workspace;
+  const dataSourceState = useDataSources(workspace.id);
+  const isArchived = workspace.status === "ARCHIVED";
 
   return (
     <main className="workbench-shell">
@@ -34,9 +58,7 @@ export function WorkspaceShellPage({ workspaceState }: WorkspaceShellPageProps) 
 
         <nav className="sidebar-nav" aria-label="Workspace navigation">
           <button className="nav-item active">Overview</button>
-          <button className="nav-item" disabled>
-            Data Sources
-          </button>
+          <button className="nav-item">Data Sources</button>
           <button className="nav-item" disabled>
             Tables
           </button>
@@ -61,13 +83,30 @@ export function WorkspaceShellPage({ workspaceState }: WorkspaceShellPageProps) 
       <section className="workspace-content">
         <header className="content-topbar">
           <div>
-            <p className="eyebrow">Workspace overview</p>
+            <p className="eyebrow">Studio</p>
             <h1>{workspace.name}</h1>
+            <p className="muted">{workspace.description ?? "No description"}</p>
           </div>
           <div className="topbar-actions">
+            <span className="status-pill">{workspace.status}</span>
             <button onClick={() => void openWorkspaceFolder(workspace.id)}>
               Open folder
             </button>
+            {isArchived ? (
+              <button
+                className="secondary-button"
+                onClick={() => void unarchiveWorkspace(workspace.id)}
+              >
+                Unarchive
+              </button>
+            ) : (
+              <button
+                className="secondary-button"
+                onClick={() => void archiveWorkspace(workspace.id)}
+              >
+                Archive
+              </button>
+            )}
             <button className="secondary-button" onClick={closeWorkspace}>
               Switch workspace
             </button>
@@ -76,32 +115,12 @@ export function WorkspaceShellPage({ workspaceState }: WorkspaceShellPageProps) 
 
         <CurrentWorkspacePanel
           detail={selectedWorkspaceDetail}
-          onArchiveWorkspace={archiveWorkspace}
-          onOpenFolder={openWorkspaceFolder}
         />
 
-        <section className="quick-actions">
-          <div>
-            <p className="eyebrow">Next actions</p>
-            <h2>Prepare this workspace</h2>
-            <p className="muted">
-              Data import, table profiling, query tools, and exports will attach
-              to this selected workspace.
-            </p>
-          </div>
-          <div className="quick-action-grid">
-            <button disabled>Import CSV</button>
-            <button className="secondary-button" disabled>
-              New query
-            </button>
-            <button
-              className="secondary-button"
-              onClick={() => void openWorkspaceFolder(workspace.id)}
-            >
-              Open folder
-            </button>
-          </div>
-        </section>
+        <DataSourcePanel
+          dataSourceState={dataSourceState}
+          isReadOnly={isArchived}
+        />
       </section>
     </main>
   );

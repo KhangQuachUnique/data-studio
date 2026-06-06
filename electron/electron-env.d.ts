@@ -27,6 +27,16 @@ interface Window {
     archiveWorkspace: (
       workspaceId: string,
     ) => Promise<import("@shared/types/Workspace").Workspace>;
+    unarchiveWorkspace: (
+      workspaceId: string,
+    ) => Promise<import("@shared/types/Workspace").Workspace>;
     openWorkspaceFolder: (workspaceId: string) => Promise<void>;
+    selectCsvFile: () => Promise<string | null>;
+    listDataSources: (
+      workspaceId: string,
+    ) => Promise<import("@shared/types/DataSource").DataSource[]>;
+    importCsv: (
+      input: import("@shared/types/DataSource").ImportCsvInput,
+    ) => Promise<import("@shared/types/DataSource").ImportCsvResult>;
   };
 }

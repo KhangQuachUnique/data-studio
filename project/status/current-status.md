@@ -1,10 +1,10 @@
 # Current Status
 
-Last updated: 2026-06-05
+Last updated: 2026-06-06
 
 ## Current Phase
 
-Phase 1 - Project setup.
+Phase 2 - Data source import and dataset profiling foundation.
 
 ## Already In Place
 
@@ -12,17 +12,20 @@ Phase 1 - Project setup.
 - `package.json` includes Vite, Electron, React, and build/lint scripts.
 - The original DataPrep Studio idea has been saved in `project/context/master-idea.md`.
 - The renderer is organized into `app`, `pages`, `features`, and `shared`.
+- Migration `002_dataset_versions_and_profiles.sql` defines the initial Phase 2 metadata model.
+- CSV data-source import/list is wired through repository, service, IPC, preload, and renderer UI.
+- Workspace archive and unarchive flows are available from IPC and UI.
+- The workspace shell has been simplified into a studio-style view focused on observing imported datasets.
 
 ## In Progress
 
-- Create project memory under `project/`.
-- Create the local backend foundation: app bootstrap, SQLite connection, migration runner, workspace repository, and workspace service.
-- Connect initialization to Electron app startup.
-- Add the first safe renderer API through `window.api` for workspace list/create.
-- Keep the current workspace screen behavior while preparing the frontend for more modules.
-- Complete workspace management with current workspace selection, persisted last-opened workspace, integrity diagnostics, folder opening, and archive actions.
+- Verify CSV import from the running Electron app.
+- Keep DuckDB loading and deeper profiling as the next engine step.
+- Keep versioning configurable as a future setting: default on, overwrite current working version when off.
 
 ## Next
 
-- Verify workspace create/list/select/archive/open-folder from the renderer UI.
-- After workspace IPC is stable, move to the first data-source import workflow.
+- Verify imported files, SQLite metadata, dataset version `v1`, and profile summaries.
+- Add DuckDB table creation for imported CSV files.
+- Add dataset profile report persistence beyond basic row/column metadata.
+- Add dataset preview/table interaction after DuckDB integration.

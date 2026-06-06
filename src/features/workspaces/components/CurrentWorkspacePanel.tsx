@@ -3,14 +3,10 @@ import { formatDateTime } from "@renderer/shared/lib/formatDateTime";
 
 interface CurrentWorkspacePanelProps {
   detail: WorkspaceDetail | null;
-  onArchiveWorkspace: (workspaceId: string) => Promise<void>;
-  onOpenFolder: (workspaceId: string) => Promise<void>;
 }
 
 export function CurrentWorkspacePanel({
   detail,
-  onArchiveWorkspace,
-  onOpenFolder,
 }: CurrentWorkspacePanelProps) {
   if (!detail) {
     return (
@@ -28,50 +24,43 @@ export function CurrentWorkspacePanel({
 
   const { workspace, integrity } = detail;
   const healthyCount = integrity.filter((check) => check.exists).length;
+  const missingChecks = integrity.filter((check) => !check.exists);
 
   return (
-    <section className="current-workspace-panel">
-      <div className="current-workspace-header">
+    <section className="workspace-health-panel">
+      <div>
+        <p className="eyebrow">Workspace health</p>
+        <h2>{healthyCount === integrity.length ? "Ready" : "Needs attention"}</h2>
+      </div>
+
+      <div className="health-metrics">
         <div>
-          <p className="eyebrow">Current workspace</p>
-          <h2>{workspace.name}</h2>
-          <p className="muted">
-            {workspace.description ?? "No description"} | Updated{" "}
-            {formatDateTime(workspace.updatedAt)}
-          </p>
+          <strong>
+            {healthyCount}/{integrity.length}
+          </strong>
+          <span>checks passing</span>
         </div>
-        <div className="panel-actions">
-          <button onClick={() => void onOpenFolder(workspace.id)}>
-            Open folder
-          </button>
-          <button
-            className="secondary-button"
-            disabled={workspace.status === "ARCHIVED"}
-            onClick={() => void onArchiveWorkspace(workspace.id)}
-          >
-            {workspace.status === "ARCHIVED" ? "Archived" : "Archive"}
-          </button>
+        <div>
+          <strong>{workspace.status}</strong>
+          <span>workspace status</span>
+        </div>
+        <div>
+          <strong>{formatDateTime(workspace.updatedAt)}</strong>
+          <span>last updated</span>
         </div>
       </div>
 
-      <div className="integrity-summary">
-        <strong>
-          {healthyCount}/{integrity.length}
-        </strong>
-        <span>workspace checks passing</span>
-      </div>
-
-      <div className="integrity-grid">
-        {integrity.map((check) => (
-          <div className="integrity-card" key={check.key}>
-            <span className={check.exists ? "check-ok" : "check-missing"}>
-              {check.exists ? "OK" : "Missing"}
-            </span>
-            <strong>{check.label}</strong>
-            <code>{check.path}</code>
-          </div>
-        ))}
-      </div>
+      {missingChecks.length > 0 ? (
+        <div className="missing-checks">
+          {missingChecks.map((check) => (
+            <div className="integrity-card" key={check.key}>
+              <span className="check-missing">Missing</span>
+              <strong>{check.label}</strong>
+              <code>{check.path}</code>
+            </div>
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 }

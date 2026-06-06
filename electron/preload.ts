@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { CreateWorkspaceInput } from "@shared/types/Workspace";
+import type { ImportCsvInput } from "@shared/types/DataSource";
 
 contextBridge.exposeInMainWorld("api", {
   listWorkspaces: () => ipcRenderer.invoke("workspace:list"),
@@ -12,6 +13,13 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.invoke("workspace:create", input),
   archiveWorkspace: (workspaceId: string) =>
     ipcRenderer.invoke("workspace:archive", workspaceId),
+  unarchiveWorkspace: (workspaceId: string) =>
+    ipcRenderer.invoke("workspace:unarchive", workspaceId),
   openWorkspaceFolder: (workspaceId: string) =>
     ipcRenderer.invoke("workspace:open-folder", workspaceId),
+  selectCsvFile: () => ipcRenderer.invoke("dialog:select-csv-file"),
+  listDataSources: (workspaceId: string) =>
+    ipcRenderer.invoke("dataSource:list", workspaceId),
+  importCsv: (input: ImportCsvInput) =>
+    ipcRenderer.invoke("dataSource:importCsv", input),
 });

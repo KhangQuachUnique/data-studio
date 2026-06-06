@@ -93,7 +93,9 @@
 .metric-card,
 .workspace-form,
 .workspace-list,
+.data-source-panel,
 .current-workspace-panel,
+.workspace-health-panel,
 .quick-actions {
   border: 1px solid #d8dee6;
   border-radius: 8px;
@@ -182,6 +184,7 @@
 }
 
 .topbar-actions {
+  align-items: center;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -271,6 +274,67 @@ h2 {
   padding: 20px;
 }
 
+.data-source-panel {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding: 20px;
+}
+
+.workspace-health-panel {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+  gap: 16px;
+  margin-bottom: 18px;
+  padding: 18px 20px;
+}
+
+.workspace-health-panel h2 {
+  margin-bottom: 0;
+}
+
+.health-metrics,
+.studio-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.health-metrics div,
+.studio-metrics div {
+  border: 1px solid #edf0f3;
+  border-radius: 8px;
+  padding: 10px;
+  background: #f8fafc;
+}
+
+.health-metrics span,
+.studio-metrics span {
+  display: block;
+  color: #667085;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.health-metrics strong,
+.studio-metrics strong {
+  display: block;
+  margin-top: 6px;
+  overflow: hidden;
+  color: #1d2939;
+  font-size: 1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.missing-checks {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .empty-current-workspace {
   background: #fbfcfd;
 }
@@ -354,6 +418,17 @@ button:disabled {
   margin-bottom: 16px;
 }
 
+.studio-section-header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.studio-section-header h2 {
+  margin-bottom: 0;
+}
+
 .list-header h2 {
   margin-bottom: 0;
 }
@@ -418,6 +493,105 @@ ul {
   background: #e8f1f7;
   font-size: 0.76rem;
   font-weight: 800;
+}
+
+.muted-pill {
+  color: #475467;
+  background: #eef2f6;
+}
+
+.status-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.data-source-list {
+  display: grid;
+  gap: 12px;
+}
+
+.data-source-item {
+  display: grid;
+  gap: 14px;
+  border: 1px solid #edf0f3;
+  border-radius: 8px;
+  padding: 14px;
+  background: #ffffff;
+}
+
+.data-source-table {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid #edf0f3;
+  border-radius: 8px;
+}
+
+.data-source-row-wrap {
+  border-top: 1px solid #edf0f3;
+}
+
+.data-source-row-wrap:first-of-type {
+  border-top: 0;
+}
+
+.data-source-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.5fr) minmax(160px, 1fr) minmax(80px, 0.55fr) minmax(80px, 0.55fr) minmax(150px, 0.9fr);
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+}
+
+.data-source-row-head {
+  color: #667085;
+  background: #f8fafc;
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.data-source-row-wrap summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.data-source-row-wrap summary::-webkit-details-marker {
+  display: none;
+}
+
+.data-source-row strong,
+.data-source-row small {
+  display: block;
+}
+
+.data-source-row small {
+  margin-top: 3px;
+  color: #667085;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.data-source-detail {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  border-top: 1px solid #edf0f3;
+  padding: 12px 14px;
+  background: #fbfcfd;
+}
+
+.data-source-detail div {
+  display: grid;
+  gap: 5px;
+}
+
+.data-source-detail span {
+  color: #667085;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
 .workspace-detail-grid {
@@ -527,16 +701,29 @@ code {
   .launcher-topbar,
   .quick-actions,
   .current-workspace-header,
-  .content-topbar {
+  .content-topbar,
+  .studio-section-header {
     display: grid;
     align-items: start;
   }
 
   .launcher-grid,
   .diagnostics,
+  .health-metrics,
+  .studio-metrics,
+  .workspace-health-panel,
   .workspace-detail-grid,
+  .data-source-detail,
   .integrity-grid {
     grid-template-columns: 1fr;
+  }
+
+  .data-source-row {
+    grid-template-columns: 1fr;
+  }
+
+  .data-source-row-head {
+    display: none;
   }
 
   .workbench-shell {
@@ -559,6 +746,8 @@ code {
 
 @media (min-width: 861px) and (max-width: 1180px) {
   .diagnostics,
+  .health-metrics,
+  .studio-metrics,
   .integrity-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

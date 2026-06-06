@@ -23,6 +23,7 @@ export function WorkspaceLauncherPage({
     loadWorkspaces,
     openWorkspace,
     openWorkspaceFolder,
+    unarchiveWorkspace,
   } = workspaceState;
 
   return (
@@ -69,6 +70,7 @@ export function WorkspaceLauncherPage({
           onOpenFolder={openWorkspaceFolder}
           onRefresh={loadWorkspaces}
           onSelectWorkspace={openWorkspace}
+          onUnarchiveWorkspace={unarchiveWorkspace}
           selectedWorkspaceId={selectedWorkspaceDetail?.workspace.id}
           workspaces={workspaces}
         />

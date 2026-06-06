@@ -6,6 +6,7 @@ interface WorkspaceListItemProps {
   onArchiveWorkspace: (workspaceId: string) => Promise<void>;
   onOpenFolder: (workspaceId: string) => Promise<void>;
   onSelectWorkspace: (workspaceId: string) => Promise<void>;
+  onUnarchiveWorkspace: (workspaceId: string) => Promise<void>;
   workspace: Workspace;
 }
 
@@ -14,6 +15,7 @@ export function WorkspaceListItem({
   onArchiveWorkspace,
   onOpenFolder,
   onSelectWorkspace,
+  onUnarchiveWorkspace,
   workspace,
 }: WorkspaceListItemProps) {
   return (
@@ -33,13 +35,21 @@ export function WorkspaceListItem({
         <button onClick={() => void onOpenFolder(workspace.id)}>
           Open folder
         </button>
-        <button
-          className="secondary-button"
-          disabled={workspace.status === "ARCHIVED"}
-          onClick={() => void onArchiveWorkspace(workspace.id)}
-        >
-          {workspace.status === "ARCHIVED" ? "Archived" : "Archive"}
-        </button>
+        {workspace.status === "ARCHIVED" ? (
+          <button
+            className="secondary-button"
+            onClick={() => void onUnarchiveWorkspace(workspace.id)}
+          >
+            Unarchive
+          </button>
+        ) : (
+          <button
+            className="secondary-button"
+            onClick={() => void onArchiveWorkspace(workspace.id)}
+          >
+            Archive
+          </button>
+        )}
       </div>
 
       <dl className="workspace-detail-grid">

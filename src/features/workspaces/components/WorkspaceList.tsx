@@ -7,6 +7,7 @@ interface WorkspaceListProps {
   onOpenFolder: (workspaceId: string) => Promise<void>;
   onRefresh: () => Promise<void>;
   onSelectWorkspace: (workspaceId: string) => Promise<void>;
+  onUnarchiveWorkspace: (workspaceId: string) => Promise<void>;
   selectedWorkspaceId?: string;
   workspaces: Workspace[];
 }
@@ -17,6 +18,7 @@ export function WorkspaceList({
   onOpenFolder,
   onRefresh,
   onSelectWorkspace,
+  onUnarchiveWorkspace,
   selectedWorkspaceId,
   workspaces,
 }: WorkspaceListProps) {
@@ -49,6 +51,7 @@ export function WorkspaceList({
             onArchiveWorkspace={onArchiveWorkspace}
             onOpenFolder={onOpenFolder}
             onSelectWorkspace={onSelectWorkspace}
+            onUnarchiveWorkspace={onUnarchiveWorkspace}
             workspace={workspace}
           />
         ))}

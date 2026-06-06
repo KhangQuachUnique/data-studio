@@ -1,13 +1,24 @@
-import { app, BrowserWindow, ipcMain, shell } from "electron";
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  shell,
+  type OpenDialogOptions,
+} from "electron";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import type { CreateWorkspaceInput } from "@shared/types/Workspace";
+import type { ImportCsvInput } from "@shared/types/DataSource";
 import { createSqliteConnection, type SqliteDatabase } from "@core/db/SqliteConnection";
 import { SqliteMigrationRunner } from "@core/db/SqliteMigrationRunner";
+import { SqliteDataSourceRepository } from "@core/repositories/data-source/DataSourceRepositoryImpl";
+import { SqliteDatasetVersionRepository } from "@core/repositories/dataset-version/DatasetVersionRepositoryImpl";
 import { SqliteAppSettingsRepository } from "@core/repositories/settings/SqliteAppSettingsRepository";
 import { SqliteWorkspaceRepository } from "@core/repositories/workspace/WorkspaceRepositoryImpl";
 import { AppBootstrapService } from "@core/services/AppBootstrapService";
+import { DataSourceService } from "@core/services/DataSourceService";
 import { WorkspaceService } from "@core/services/WorkspaceService";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -24,6 +35,7 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
 
 interface MainContainer {
   db: SqliteDatabase;
+  dataSourceService: DataSourceService;
   workspaceService: WorkspaceService;
 }
 
@@ -38,15 +50,23 @@ async function createContainer(): Promise<MainContainer> {
   new SqliteMigrationRunner(db, resolveMigrationsDir()).run();
 
   const workspaceRepository = new SqliteWorkspaceRepository(db);
+  const dataSourceRepository = new SqliteDataSourceRepository(db);
+  const datasetVersionRepository = new SqliteDatasetVersionRepository(db);
   const appSettingsRepository = new SqliteAppSettingsRepository(db);
   const workspaceService = new WorkspaceService(
     workspaceRepository,
     appPaths.workspacesPath,
     appSettingsRepository,
   );
+  const dataSourceService = new DataSourceService(
+    workspaceRepository,
+    dataSourceRepository,
+    datasetVersionRepository,
+  );
 
   return {
     db,
+    dataSourceService,
     workspaceService,
   };
 }
@@ -95,6 +115,10 @@ function registerIpcHandlers(dependencies: MainContainer): void {
     return dependencies.workspaceService.archiveWorkspace(workspaceId);
   });
 
+  ipcMain.handle("workspace:unarchive", (_event, workspaceId: string) => {
+    return dependencies.workspaceService.unarchiveWorkspace(workspaceId);
+  });
+
   ipcMain.handle("workspace:open-folder", async (_event, workspaceId: string) => {
     const detail = await dependencies.workspaceService.getWorkspaceDetail(
       workspaceId,
@@ -102,6 +126,34 @@ function registerIpcHandlers(dependencies: MainContainer): void {
 
     await shell.openPath(detail.workspace.path);
   });
+
+  ipcMain.handle("dialog:select-csv-file", async () => {
+    const options: OpenDialogOptions = {
+      filters: [{ name: "CSV files", extensions: ["csv"] }],
+      properties: ["openFile"],
+      title: "Select CSV file",
+    };
+    const result = win
+      ? await dialog.showOpenDialog(win, options)
+      : await dialog.showOpenDialog(options);
+
+    if (result.canceled) {
+      return null;
+    }
+
+    return result.filePaths[0] ?? null;
+  });
+
+  ipcMain.handle("dataSource:list", (_event, workspaceId: string) => {
+    return dependencies.dataSourceService.listDataSources(workspaceId);
+  });
+
+  ipcMain.handle(
+    "dataSource:importCsv",
+    (_event, input: ImportCsvInput) => {
+      return dependencies.dataSourceService.importCsv(input);
+    },
+  );
 }
 
 function createWindow(): void {

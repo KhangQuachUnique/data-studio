@@ -25,3 +25,23 @@
 - Added current workspace selection and persisted the last-opened workspace through `app_settings`.
 - Added workspace detail integrity checks for folder and manifest existence.
 - Added renderer actions for select, open folder, and archive workspace.
+
+## 2026-06-06 - Phase 2 data model start
+
+- Added migration `002_dataset_versions_and_profiles.sql`.
+- Extended the data-source model with import/profile metadata.
+- Added metadata tables for dataset versions, dataset profile reports, and column profile reports.
+
+## 2026-06-06 - CSV data-source import flow
+
+- Added shared data-source and dataset-version contracts.
+- Added SQLite repositories for data sources and dataset versions.
+- Added `DataSourceService` for CSV import into workspace raw storage with version `v1` metadata.
+- Wired CSV file picker, import/list IPC, preload APIs, and renderer data-source UI.
+
+## 2026-06-06 - Workspace studio cleanup
+
+- Added workspace unarchive API and UI actions.
+- Allowed archived workspaces to remain readable while blocking new CSV imports.
+- Simplified the workspace shell into a cleaner studio-style layout.
+- Removed duplicated quick actions and made the data-source table the main observation surface.

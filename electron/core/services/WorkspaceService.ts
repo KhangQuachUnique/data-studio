@@ -68,6 +68,20 @@ export class WorkspaceService {
     return archivedWorkspace;
   }
 
+  async unarchiveWorkspace(workspaceId: string): Promise<Workspace> {
+    const workspace = await this.getWorkspaceOrThrow(workspaceId);
+    const activeWorkspace: Workspace = {
+      ...workspace,
+      status: "ACTIVE",
+      updatedAt: nowIso(),
+    };
+
+    await this.workspaceRepository.update(activeWorkspace);
+    await this.writeWorkspaceManifest(activeWorkspace);
+
+    return activeWorkspace;
+  }
+
   async createWorkspace(payload: CreateWorkspaceInput): Promise<Workspace> {
     const name = payload.name.trim();
 
