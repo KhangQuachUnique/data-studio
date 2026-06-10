@@ -1,31 +1,32 @@
 # Current Status
 
-Last updated: 2026-06-06
+Last updated: 2026-06-09
 
 ## Current Phase
 
-Phase 2 - Data source import and dataset profiling foundation.
+Phase 2 - Parquet-first CSV import and metadata foundation.
 
 ## Already In Place
 
 - Repo Electron + React + TypeScript scaffold.
-- `package.json` includes Vite, Electron, React, and build/lint scripts.
-- The original DataPrep Studio idea has been saved in `project/context/master-idea.md`.
-- The renderer is organized into `app`, `pages`, `features`, and `shared`.
-- Migration `002_dataset_versions_and_profiles.sql` defines the initial Phase 2 metadata model.
-- CSV data-source import/list is wired through repository, service, IPC, preload, and renderer UI.
-- Workspace archive and unarchive flows are available from IPC and UI.
-- The workspace shell has been simplified into a studio-style view focused on observing imported datasets.
+- Renderer is organized into `app`, `pages`, `features`, and `shared`.
+- SQLite metadata schema has been rebuilt cleanly in `001_init.sql`.
+- Metadata now follows the final MVP model: `workspaces`, `data_sources`, `datasets`, `dataset_versions`, `dataset_version_columns`, profile report tables, and `operations`.
+- DuckDB is now a processing engine only. It reads CSV/Parquet and writes Parquet, but imported datasets are not stored as persistent DuckDB tables.
+- CSV import copies the original file into workspace raw storage, converts it into a canonical Parquet version, stores metadata in SQLite, and records the import operation.
+- Current dataset preview reads directly from `read_parquet(...)` with a bounded row limit.
+- Workspace archive/unarchive flows remain available from IPC and UI.
+- Windows packaging now skips `winCodeSign` executable editing for unsigned MVP builds, avoiding the symlink privilege failure.
 
 ## In Progress
 
-- Verify CSV import from the running Electron app.
-- Keep DuckDB loading and deeper profiling as the next engine step.
-- Keep versioning configurable as a future setting: default on, overwrite current working version when off.
+- Keep deeper profiling as the next engine step.
+- Keep transform/clean operations aligned with Parquet version output.
+- Keep import format expansion behind future strategy implementations.
 
 ## Next
 
-- Verify imported files, SQLite metadata, dataset version `v1`, and profile summaries.
-- Add DuckDB table creation for imported CSV files.
-- Add dataset profile report persistence beyond basic row/column metadata.
-- Add dataset preview/table interaction after DuckDB integration.
+- Persist actual dataset profile reports into `dataset_profile_reports` and `column_profile_reports`.
+- Add cleaning/transform services that read an input Parquet version and write a new Parquet output version.
+- Add export flow that reads the selected Parquet version and writes CSV.
+- Add richer dataset table interaction beyond the bounded preview.

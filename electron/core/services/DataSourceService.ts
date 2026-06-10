@@ -1,101 +1,266 @@
 import fs from "node:fs/promises";
-import { createReadStream } from "node:fs";
 import path from "node:path";
-import readline from "node:readline";
 import type {
   DataSource,
+  DataSourceListItem,
+  DataSourcePreview,
+  Dataset,
+  DatasetVersion,
+  DatasetVersionColumn,
   ImportCsvInput,
   ImportCsvResult,
+  Operation,
 } from "@shared/types/DataSource";
 import type { WorkspaceRepository } from "@core/repositories/workspace/WorkspaceRepository";
 import type { DataSourceRepository } from "@core/repositories/data-source/DataSourceRepository";
+import type { DatasetRepository } from "@core/repositories/dataset/DatasetRepository";
 import type { DatasetVersionRepository } from "@core/repositories/dataset-version/DatasetVersionRepository";
+import type { DatasetVersionColumnRepository } from "@core/repositories/dataset-version-column/DatasetVersionColumnRepository";
+import type { OperationRepository } from "@core/repositories/operation/OperationRepository";
 import { nowIso } from "@core/utils/date";
 import { generateId } from "@core/utils/id";
 import { slugify } from "@core/utils/slugify";
-
-interface CsvStats {
-  rowCount: number;
-  columnCount: number;
-}
+import { DuckDbService } from "./DuckDbService";
 
 export class DataSourceService {
   constructor(
     private readonly workspaceRepository: WorkspaceRepository,
     private readonly dataSourceRepository: DataSourceRepository,
+    private readonly datasetRepository: DatasetRepository,
     private readonly datasetVersionRepository: DatasetVersionRepository,
+    private readonly datasetVersionColumnRepository: DatasetVersionColumnRepository,
+    private readonly operationRepository: OperationRepository,
+    private readonly duckDbService: DuckDbService,
   ) {}
 
-  async listDataSources(workspaceId: string): Promise<DataSource[]> {
+  async listDataSources(workspaceId: string): Promise<DataSourceListItem[]> {
     await this.getWorkspaceOrThrow(workspaceId);
 
     return this.dataSourceRepository.findByWorkspaceId(workspaceId);
   }
 
+  async previewDataSource(
+    workspaceId: string,
+    dataSourceId: string,
+    rowLimit = 100,
+  ): Promise<DataSourcePreview> {
+    const workspace = await this.getWorkspaceOrThrow(workspaceId);
+    const dataSource = await this.dataSourceRepository.findById(dataSourceId);
+
+    if (!dataSource || dataSource.workspaceId !== workspace.id) {
+      throw new Error("Data source not found.");
+    }
+
+    const dataset = await this.datasetRepository.findBySourceId(dataSource.id);
+
+    if (!dataset?.currentVersionId) {
+      throw new Error("Data source does not have a current dataset version yet.");
+    }
+
+    const currentVersion = await this.datasetVersionRepository.findById(
+      dataset.currentVersionId,
+    );
+
+    if (!currentVersion || currentVersion.storageFormat !== "parquet") {
+      throw new Error("Current dataset version is not a parquet artifact.");
+    }
+
+    return this.duckDbService.previewParquet(
+      workspace.duckdbPath,
+      this.resolveWorkspacePath(workspace.path, currentVersion.storageUri),
+      rowLimit,
+    );
+  }
+
+  async deleteDataSource(
+    workspaceId: string,
+    dataSourceId: string,
+  ): Promise<void> {
+    const workspace = await this.getActiveWorkspaceOrThrow(workspaceId);
+    const dataSource = await this.dataSourceRepository.findById(dataSourceId);
+
+    if (!dataSource || dataSource.workspaceId !== workspace.id) {
+      throw new Error("Data source not found.");
+    }
+
+    const dataset = await this.datasetRepository.findBySourceId(dataSource.id);
+
+    if (dataset) {
+      const versions = await this.datasetVersionRepository.findByDatasetId(
+        dataset.id,
+      );
+
+      for (const version of versions) {
+        if (version.storageFormat === "parquet") {
+          await this.deleteStoredFileIfInsideWorkspace(
+            this.resolveWorkspacePath(workspace.path, version.storageUri),
+            workspace.path,
+          );
+        }
+      }
+    }
+
+    const copiedRawPath = this.readRawStoredPathFromConfig(dataSource.configJson);
+
+    if (copiedRawPath) {
+      await this.deleteStoredFileIfInsideWorkspace(
+        this.resolveWorkspacePath(workspace.path, copiedRawPath),
+        workspace.path,
+      );
+    }
+
+    await this.dataSourceRepository.deleteById(dataSource.id);
+  }
+
   async importCsv(input: ImportCsvInput): Promise<ImportCsvResult> {
+    return this.importFile(input);
+  }
+
+  private async importFile(input: ImportCsvInput): Promise<ImportCsvResult> {
     const workspace = await this.getActiveWorkspaceOrThrow(input.workspaceId);
     const sourcePath = path.resolve(input.filePath);
 
     await this.validateCsvFile(sourcePath);
 
     const dataSourceId = generateId("data_source");
+    const datasetId = generateId("dataset");
     const versionId = generateId("dataset_version");
+    const operationId = generateId("operation");
     const now = nowIso();
-    const rawDir = path.join(workspace.path, "data", "raw");
-    const storedPath = await this.copyCsvToRawDir(sourcePath, rawDir);
-    const stats = await this.readCsvStats(storedPath, {
-      delimiter: input.delimiter ?? ",",
-      hasHeader: input.hasHeader,
-    });
-    const fileStat = await fs.stat(storedPath);
     const sourceName = path.basename(sourcePath);
-    const tableName = this.createTableName(sourceName, dataSourceId);
+    const datasetName = this.createDatasetName(sourceName, datasetId);
+    const rawDir = path.join(workspace.path, "data", "raw");
+    const copiedCsvPath = await this.copyCsvToRawDir(sourcePath, rawDir);
+    const parquetRelativePath = path.join(
+      "data",
+      "datasets",
+      datasetId,
+      "versions",
+      "v1",
+      "data.parquet",
+    );
+    const parquetPath = path.join(workspace.path, parquetRelativePath);
+    const delimiter = input.delimiter ?? ",";
 
-    const currentVersion = {
-      id: versionId,
+    let operation: Operation = {
+      id: operationId,
       workspaceId: workspace.id,
-      dataSourceId,
-      versionNumber: 1,
-      sourceKind: "IMPORT" as const,
-      tableName,
-      rowCount: stats.rowCount,
-      columnCount: stats.columnCount,
-      status: "READY" as const,
+      operationType: "import",
+      status: "running",
+      engineType: "duckdb",
+      name: `Import ${sourceName}`,
+      configJson: JSON.stringify({
+        copiedRawPath: this.toWorkspaceRelativePath(workspace.path, copiedCsvPath),
+        delimiter,
+        hasHeader: input.hasHeader,
+        originalPath: sourcePath,
+        sourceFormat: "csv",
+      }),
       createdAt: now,
-      updatedAt: now,
+      startedAt: now,
     };
 
-    const initialDataSource: DataSource = {
-      id: dataSourceId,
-      workspaceId: workspace.id,
-      name: sourceName,
-      type: "CSV",
-      originalPath: sourcePath,
-      storedPath,
-      tableName,
-      status: "READY",
-      fileSizeBytes: fileStat.size,
-      delimiter: input.delimiter ?? ",",
-      hasHeader: input.hasHeader,
-      rowCount: stats.rowCount,
-      columnCount: stats.columnCount,
-      profileStatus: "NOT_STARTED",
-      createdAt: now,
-      updatedAt: now,
-    };
+    await this.operationRepository.create(operation);
 
-    await this.dataSourceRepository.create(initialDataSource);
-    await this.datasetVersionRepository.create(currentVersion);
-    const dataSource = await this.dataSourceRepository.update({
-      ...initialDataSource,
-      currentVersionId: versionId,
-      updatedAt: nowIso(),
-    });
+    try {
+      const stats = await this.duckDbService.convertCsvToParquet({
+        csvPath: copiedCsvPath,
+        delimiter,
+        duckdbPath: workspace.duckdbPath,
+        hasHeader: input.hasHeader,
+        parquetPath,
+      });
 
-    return {
-      dataSource,
-      currentVersion,
-    };
+      const dataSource: DataSource = {
+        id: dataSourceId,
+        workspaceId: workspace.id,
+        name: sourceName,
+        sourceType: "file",
+        sourceUri: sourcePath,
+        provider: "local",
+        configJson: operation.configJson,
+        createdAt: now,
+        updatedAt: now,
+      };
+      const dataset: Dataset = {
+        id: datasetId,
+        workspaceId: workspace.id,
+        sourceId: dataSource.id,
+        name: datasetName,
+        displayName: path.parse(sourceName).name,
+        datasetKind: "raw",
+        status: "active",
+        createdAt: now,
+        updatedAt: now,
+      };
+      const currentVersion: DatasetVersion = {
+        id: versionId,
+        workspaceId: workspace.id,
+        datasetId: dataset.id,
+        versionNumber: 1,
+        storageFormat: "parquet",
+        storageUri: parquetRelativePath,
+        rowCount: stats.rowCount,
+        columnCount: stats.columnCount,
+        sizeBytes: stats.sizeBytes,
+        schemaJson: stats.schemaJson,
+        createdByOperationId: operation.id,
+        createdAt: now,
+      };
+      const columns: DatasetVersionColumn[] = stats.columns.map((column) => ({
+        id: generateId("dataset_column"),
+        datasetVersionId: currentVersion.id,
+        columnName: column.name,
+        ordinalPosition: column.ordinalPosition,
+        dataType: column.dataType,
+        nullable: true,
+        originalColumnName: column.name,
+        createdAt: now,
+      }));
+
+      await this.dataSourceRepository.create(dataSource);
+      await this.datasetRepository.create(dataset);
+      await this.datasetVersionRepository.create(currentVersion);
+      await this.datasetVersionColumnRepository.createMany(columns);
+      const updatedDataset = await this.datasetRepository.update({
+        ...dataset,
+        currentVersionId: currentVersion.id,
+        updatedAt: nowIso(),
+      });
+
+      operation = {
+        ...operation,
+        outputVersionId: currentVersion.id,
+        resultJson: JSON.stringify({
+          columnCount: stats.columnCount,
+          parquetPath: parquetRelativePath,
+          rowCount: stats.rowCount,
+          sizeBytes: stats.sizeBytes,
+        }),
+        sourceId: dataSource.id,
+        status: "success",
+        finishedAt: nowIso(),
+      };
+      await this.operationRepository.update(operation);
+
+      return {
+        currentVersion,
+        dataSource,
+        dataset: updatedDataset,
+      };
+    } catch (error) {
+      await this.deleteStoredFileIfInsideWorkspace(parquetPath, workspace.path);
+
+      operation = {
+        ...operation,
+        errorMessage: this.getErrorMessage(error),
+        status: "failed",
+        finishedAt: nowIso(),
+      };
+      await this.operationRepository.update(operation);
+
+      throw error;
+    }
   }
 
   private async getWorkspaceOrThrow(workspaceId: string) {
@@ -174,73 +339,72 @@ export class DataSourceService {
     }
   }
 
-  private async readCsvStats(
-    filePath: string,
-    options: { delimiter: string; hasHeader: boolean },
-  ): Promise<CsvStats> {
-    const stream = createReadStream(filePath, { encoding: "utf-8" });
-    const lines = readline.createInterface({
-      crlfDelay: Infinity,
-      input: stream,
-    });
+  private async deleteStoredFileIfInsideWorkspace(
+    storedPath: string,
+    workspacePath: string,
+  ): Promise<void> {
+    const resolvedStoredPath = path.resolve(storedPath);
+    const resolvedWorkspacePath = path.resolve(workspacePath);
+    const relativePath = path.relative(resolvedWorkspacePath, resolvedStoredPath);
 
-    let lineCount = 0;
-    let columnCount = 0;
-
-    for await (const line of lines) {
-      if (lineCount === 0) {
-        columnCount = this.splitCsvLine(line, options.delimiter).length;
-      }
-
-      if (line.trim().length > 0) {
-        lineCount += 1;
-      }
+    if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+      return;
     }
 
-    return {
-      columnCount,
-      rowCount: options.hasHeader ? Math.max(lineCount - 1, 0) : lineCount,
-    };
-  }
-
-  private splitCsvLine(line: string, delimiter: string): string[] {
-    const columns: string[] = [];
-    let current = "";
-    let inQuotes = false;
-
-    for (let index = 0; index < line.length; index += 1) {
-      const char = line[index];
-      const nextChar = line[index + 1];
-
-      if (char === '"' && nextChar === '"') {
-        current += char;
-        index += 1;
-        continue;
+    try {
+      await fs.unlink(resolvedStoredPath);
+    } catch (error) {
+      if (!this.isFileNotFoundError(error)) {
+        throw error;
       }
-
-      if (char === '"') {
-        inQuotes = !inQuotes;
-        continue;
-      }
-
-      if (char === delimiter && !inQuotes) {
-        columns.push(current);
-        current = "";
-        continue;
-      }
-
-      current += char;
     }
-
-    columns.push(current);
-
-    return columns;
   }
 
-  private createTableName(fileName: string, dataSourceId: string): string {
+  private isFileNotFoundError(error: unknown): boolean {
+    return (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "ENOENT"
+    );
+  }
+
+  private createDatasetName(fileName: string, datasetId: string): string {
     const baseName = slugify(path.parse(fileName).name) || "dataset";
-    const suffix = dataSourceId.replace(/[^a-zA-Z0-9]/g, "").slice(-8);
+    const suffix = datasetId.replace(/[^a-zA-Z0-9]/g, "").slice(-8);
 
-    return `ds_${baseName}_${suffix}_v1`;
+    return `${baseName}_${suffix}`;
+  }
+
+  private resolveWorkspacePath(workspacePath: string, storedPath: string): string {
+    if (path.isAbsolute(storedPath)) {
+      return storedPath;
+    }
+
+    return path.join(workspacePath, storedPath);
+  }
+
+  private toWorkspaceRelativePath(workspacePath: string, storedPath: string): string {
+    return path.relative(workspacePath, storedPath);
+  }
+
+  private readRawStoredPathFromConfig(configJson: string | undefined): string | null {
+    if (!configJson) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(configJson) as { copiedRawPath?: unknown };
+
+      return typeof parsed.copiedRawPath === "string"
+        ? parsed.copiedRawPath
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : "Unknown import error.";
   }
 }

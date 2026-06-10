@@ -1,17 +1,18 @@
 import type { Workspace, WorkspaceStatus } from "@shared/types/Workspace";
 import type { SqliteDatabase } from "@core/db/SqliteConnection";
 import type { WorkspaceRepository } from "./WorkspaceRepository";
+import path from "node:path";
 
 interface WorkspaceRow {
   id: string;
   name: string;
   slug: string;
   description: string | null;
-  path: string;
-  duckdb_path: string;
+  root_path: string;
   status: string;
   created_at: string;
   updated_at: string;
+  last_opened_at: string | null;
 }
 
 export class SqliteWorkspaceRepository implements WorkspaceRepository {
@@ -26,11 +27,11 @@ export class SqliteWorkspaceRepository implements WorkspaceRepository {
           name,
           slug,
           description,
-          path,
-          duckdb_path,
+          root_path,
           status,
           created_at,
-          updated_at
+          updated_at,
+          last_opened_at
         FROM workspaces
         ORDER BY updated_at DESC
         `,
@@ -49,11 +50,11 @@ export class SqliteWorkspaceRepository implements WorkspaceRepository {
           name,
           slug,
           description,
-          path,
-          duckdb_path,
+          root_path,
           status,
           created_at,
-          updated_at
+          updated_at,
+          last_opened_at
         FROM workspaces
         WHERE id = ?
         `,
@@ -72,11 +73,11 @@ export class SqliteWorkspaceRepository implements WorkspaceRepository {
           name,
           slug,
           description,
-          path,
-          duckdb_path,
+          root_path,
           status,
           created_at,
-          updated_at
+          updated_at,
+          last_opened_at
         FROM workspaces
         WHERE slug = ?
         `,
@@ -95,13 +96,12 @@ export class SqliteWorkspaceRepository implements WorkspaceRepository {
           name,
           slug,
           description,
-          path,
-          duckdb_path,
+          root_path,
           status,
           created_at,
           updated_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `,
       )
       .run(
@@ -110,7 +110,6 @@ export class SqliteWorkspaceRepository implements WorkspaceRepository {
         workspace.slug,
         workspace.description ?? null,
         workspace.path,
-        workspace.duckdbPath,
         workspace.status,
         workspace.createdAt,
         workspace.updatedAt,
@@ -128,8 +127,7 @@ export class SqliteWorkspaceRepository implements WorkspaceRepository {
           name = ?,
           slug = ?,
           description = ?,
-          path = ?,
-          duckdb_path = ?,
+          root_path = ?,
           status = ?,
           updated_at = ?
         WHERE id = ?
@@ -140,7 +138,6 @@ export class SqliteWorkspaceRepository implements WorkspaceRepository {
         workspace.slug,
         workspace.description ?? null,
         workspace.path,
-        workspace.duckdbPath,
         workspace.status,
         workspace.updatedAt,
         workspace.id,
@@ -155,8 +152,8 @@ export class SqliteWorkspaceRepository implements WorkspaceRepository {
       name: row.name,
       slug: row.slug,
       description: row.description ?? undefined,
-      path: row.path,
-      duckdbPath: row.duckdb_path,
+      path: row.root_path,
+      duckdbPath: path.join(row.root_path, "duckdb", "workspace.duckdb"),
       status: row.status as WorkspaceStatus,
       createdAt: row.created_at,
       updatedAt: row.updated_at,

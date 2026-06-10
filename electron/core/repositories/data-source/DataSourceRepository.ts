@@ -1,7 +1,7 @@
-import type { DataSource } from "@shared/types/DataSource";
+import type { DataSource, DataSourceListItem } from "@shared/types/DataSource";
 
 export interface DataSourceRepository {
-  findByWorkspaceId(workspaceId: string): Promise<DataSource[]>;
+  findByWorkspaceId(workspaceId: string): Promise<DataSourceListItem[]>;
 
   findById(id: string): Promise<DataSource | null>;
 

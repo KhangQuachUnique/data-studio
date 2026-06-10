@@ -5,12 +5,13 @@ When the product direction changes or a phase is completed, update the relevant 
 
 ## How To Use
 
-- `context/`: original idea, product description, and MVP boundaries.
+- `context/`: original idea, product description, MVP boundaries, and UI guidelines.
 - `plans/`: active plans for each project phase.
 - `plans/archive/`: old plan versions when a plan changes significantly.
 - `status/`: current project state.
 - `decisions/`: important product and technical decisions.
 - `progress/`: progress log by date or milestone.
+- `reports/`: detailed implementation reports for completed architecture milestones.
 
 ## Update Rules
 

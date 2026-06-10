@@ -1,5 +1,10 @@
-import { WorkspacesPage } from "@renderer/pages/workspaces/WorkspacesPage";
+import { HashRouter } from "react-router-dom";
+import { AppRoutes } from "./routes/AppRoutes";
 
 export function App() {
-  return <WorkspacesPage />;
+  return (
+    <HashRouter>
+      <AppRoutes />
+    </HashRouter>
+  );
 }

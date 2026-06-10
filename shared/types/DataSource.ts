@@ -1,42 +1,50 @@
-export type DataSourceType = "CSV";
+export type DataSourceType = "file" | "folder" | "database" | "api" | "manual";
 
-export type DataSourceStatus = "PENDING" | "READY" | "FAILED";
+export type DataSourceProvider =
+  | "local"
+  | "postgres"
+  | "mysql"
+  | "api"
+  | "google_sheet";
 
-export type ProfileStatus = "NOT_STARTED" | "PENDING" | "READY" | "FAILED";
+export type DatasetKind = "raw" | "derived" | "cleaned" | "joined" | "aggregated";
 
-export type DatasetVersionSourceKind = "IMPORT" | "TRANSFORM";
+export type DatasetStatus = "active" | "archived" | "deleted";
 
-export type DatasetVersionStatus = "PENDING" | "READY" | "FAILED";
+export type DatasetStorageFormat = "parquet" | "csv" | "duckdb_table";
 
-export type ProfileReportStatus = "PENDING" | "READY" | "FAILED";
+export type ProfileReportStatus = "pending" | "running" | "success" | "failed";
 
-export type InferredColumnType =
-  | "STRING"
-  | "INTEGER"
-  | "FLOAT"
-  | "BOOLEAN"
-  | "DATE"
-  | "DATETIME"
-  | "UNKNOWN";
+export type OperationType = "import" | "profile" | "clean" | "export" | "transform";
+
+export type OperationStatus =
+  | "pending"
+  | "running"
+  | "success"
+  | "failed"
+  | "canceled";
 
 export interface DataSource {
   id: string;
   workspaceId: string;
   name: string;
-  type: DataSourceType;
-  originalPath?: string;
-  storedPath?: string;
-  tableName?: string;
-  status: DataSourceStatus;
-  errorMessage?: string;
-  fileSizeBytes?: number;
-  detectedEncoding?: string;
-  delimiter?: string;
-  hasHeader: boolean;
-  rowCount?: number;
-  columnCount?: number;
-  profileStatus: ProfileStatus;
-  profiledAt?: string;
+  sourceType: DataSourceType;
+  sourceUri?: string;
+  provider?: DataSourceProvider;
+  configJson?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Dataset {
+  id: string;
+  workspaceId: string;
+  sourceId?: string;
+  name: string;
+  displayName?: string;
+  description?: string;
+  datasetKind: DatasetKind;
+  status: DatasetStatus;
   currentVersionId?: string;
   createdAt: string;
   updatedAt: string;
@@ -45,58 +53,115 @@ export interface DataSource {
 export interface DatasetVersion {
   id: string;
   workspaceId: string;
-  dataSourceId: string;
+  datasetId: string;
   versionNumber: number;
-  sourceKind: DatasetVersionSourceKind;
-  parentVersionId?: string;
-  tableName: string;
+  versionName?: string;
+  description?: string;
+  storageFormat: DatasetStorageFormat;
+  storageUri: string;
   rowCount?: number;
   columnCount?: number;
-  status: DatasetVersionStatus;
-  errorMessage?: string;
+  sizeBytes?: number;
+  schemaJson?: string;
+  createdByOperationId?: string;
   createdAt: string;
-  updatedAt: string;
+}
+
+export interface DatasetVersionColumn {
+  id: string;
+  datasetVersionId: string;
+  columnName: string;
+  ordinalPosition: number;
+  dataType: string;
+  nullable?: boolean;
+  originalColumnName?: string;
+  createdAt: string;
+}
+
+export interface DataSourceListItem {
+  dataSource: DataSource;
+  dataset?: Dataset;
+  currentVersion?: DatasetVersion;
+  versionCount: number;
 }
 
 export interface DatasetProfileReport {
   id: string;
   workspaceId: string;
-  dataSourceId: string;
+  datasetId: string;
   datasetVersionId: string;
-  status: ProfileReportStatus;
   rowCount?: number;
   columnCount?: number;
+  sizeBytes?: number;
   duplicateRowCount?: number;
+  duplicateRowRatio?: number;
   missingCellCount?: number;
-  missingCellPercent?: number;
+  missingCellRatio?: number;
+  emptyRowCount?: number;
+  emptyRowRatio?: number;
+  emptyColumnCount?: number;
   qualityScore?: number;
-  reportPath?: string;
+  schemaSummaryJson?: string;
+  qualityIssuesJson?: string;
+  suggestedActionsJson?: string;
+  summaryJson?: string;
+  status: ProfileReportStatus;
   errorMessage?: string;
   createdAt: string;
-  completedAt?: string;
+  finishedAt?: string;
 }
 
 export interface ColumnProfileReport {
   id: string;
   profileReportId: string;
+  datasetVersionId: string;
+  datasetVersionColumnId: string;
   columnName: string;
-  columnIndex: number;
-  inferredType: InferredColumnType;
+  ordinalPosition: number;
+  declaredType?: string;
+  inferredType?: string;
+  rowCount?: number;
   nonNullCount?: number;
   nullCount?: number;
-  nullPercent?: number;
-  distinctCount?: number;
+  nullRatio?: number;
+  emptyStringCount?: number;
+  emptyStringRatio?: number;
   uniqueCount?: number;
+  uniqueRatio?: number;
   minValue?: string;
   maxValue?: string;
   meanValue?: number;
   medianValue?: number;
-  stddevValue?: number;
+  stdValue?: number;
+  q1Value?: number;
+  q3Value?: number;
   minLength?: number;
   maxLength?: number;
   avgLength?: number;
+  topValuesJson?: string;
   sampleValuesJson?: string;
-  warningsJson?: string;
+  issuesJson?: string;
+  statsJson?: string;
+  createdAt: string;
+}
+
+export interface Operation {
+  id: string;
+  workspaceId: string;
+  operationType: OperationType;
+  status: OperationStatus;
+  sourceId?: string;
+  inputVersionId?: string;
+  outputVersionId?: string;
+  outputProfileReportId?: string;
+  engineType?: string;
+  name?: string;
+  description?: string;
+  configJson?: string;
+  resultJson?: string;
+  errorMessage?: string;
+  startedAt?: string;
+  finishedAt?: string;
   createdAt: string;
 }
 
@@ -109,11 +174,19 @@ export interface ImportCsvInput {
 
 export interface ImportCsvResult {
   dataSource: DataSource;
+  dataset: Dataset;
   currentVersion: DatasetVersion;
+}
+
+export interface DataSourcePreview {
+  columns: string[];
+  rows: Record<string, unknown>[];
+  rowLimit: number;
 }
 
 export interface DataSourceProfileDetail {
   dataSource: DataSource;
+  dataset?: Dataset;
   currentVersion?: DatasetVersion;
   profileReport?: DatasetProfileReport;
   columnReports: ColumnProfileReport[];

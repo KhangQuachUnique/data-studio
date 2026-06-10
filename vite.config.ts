@@ -28,7 +28,11 @@ export default defineConfig({
           },
           build: {
             rollupOptions: {
-              external: ["better-sqlite3"],
+              external: [
+                "@duckdb/node-api",
+                "@duckdb/node-bindings",
+                "better-sqlite3",
+              ],
             },
           },
         },

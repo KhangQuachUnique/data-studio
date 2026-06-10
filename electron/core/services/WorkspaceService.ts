@@ -151,6 +151,12 @@ export class WorkspaceService {
         exists: false,
       },
       {
+        key: "datasets",
+        label: "Datasets folder",
+        path: path.join(workspace.path, "data", "datasets"),
+        exists: false,
+      },
+      {
         key: "duckdb-folder",
         label: "DuckDB folder",
         path: path.dirname(workspace.duckdbPath),
@@ -203,6 +209,9 @@ export class WorkspaceService {
   ): Promise<void> {
     await fs.mkdir(workspace.path, { recursive: true });
     await fs.mkdir(path.join(workspace.path, "data", "raw"), {
+      recursive: true,
+    });
+    await fs.mkdir(path.join(workspace.path, "data", "datasets"), {
       recursive: true,
     });
     await fs.mkdir(path.join(workspace.path, "duckdb"), { recursive: true });

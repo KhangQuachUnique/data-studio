@@ -1,41 +1,42 @@
 import type { SqliteDatabase } from "@core/db/SqliteConnection";
 import type {
+  DatasetStorageFormat,
   DatasetVersion,
-  DatasetVersionSourceKind,
-  DatasetVersionStatus,
 } from "@shared/types/DataSource";
 import type { DatasetVersionRepository } from "./DatasetVersionRepository";
 
 interface DatasetVersionRow {
   id: string;
   workspace_id: string;
-  data_source_id: string;
+  dataset_id: string;
   version_number: number;
-  source_kind: string;
-  parent_version_id: string | null;
-  table_name: string;
+  version_name: string | null;
+  description: string | null;
+  storage_format: string;
+  storage_uri: string;
   row_count: number | null;
   column_count: number | null;
-  status: string;
-  error_message: string | null;
+  size_bytes: number | null;
+  schema_json: string | null;
+  created_by_operation_id: string | null;
   created_at: string;
-  updated_at: string;
 }
 
 const datasetVersionColumns = `
   id,
   workspace_id,
-  data_source_id,
+  dataset_id,
   version_number,
-  source_kind,
-  parent_version_id,
-  table_name,
+  version_name,
+  description,
+  storage_format,
+  storage_uri,
   row_count,
   column_count,
-  status,
-  error_message,
-  created_at,
-  updated_at
+  size_bytes,
+  schema_json,
+  created_by_operation_id,
+  created_at
 `;
 
 export class SqliteDatasetVersionRepository
@@ -43,17 +44,17 @@ export class SqliteDatasetVersionRepository
 {
   constructor(private readonly db: SqliteDatabase) {}
 
-  async findByDataSourceId(dataSourceId: string): Promise<DatasetVersion[]> {
+  async findByDatasetId(datasetId: string): Promise<DatasetVersion[]> {
     const rows = this.db
       .prepare(
         `
         SELECT ${datasetVersionColumns}
         FROM dataset_versions
-        WHERE data_source_id = ?
+        WHERE dataset_id = ?
         ORDER BY version_number DESC
         `,
       )
-      .all(dataSourceId) as DatasetVersionRow[];
+      .all(datasetId) as DatasetVersionRow[];
 
     return rows.map((row) => this.toDomain(row));
   }
@@ -79,35 +80,37 @@ export class SqliteDatasetVersionRepository
         INSERT INTO dataset_versions (
           id,
           workspace_id,
-          data_source_id,
+          dataset_id,
           version_number,
-          source_kind,
-          parent_version_id,
-          table_name,
+          version_name,
+          description,
+          storage_format,
+          storage_uri,
           row_count,
           column_count,
-          status,
-          error_message,
-          created_at,
-          updated_at
+          size_bytes,
+          schema_json,
+          created_by_operation_id,
+          created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `,
       )
       .run(
         datasetVersion.id,
         datasetVersion.workspaceId,
-        datasetVersion.dataSourceId,
+        datasetVersion.datasetId,
         datasetVersion.versionNumber,
-        datasetVersion.sourceKind,
-        datasetVersion.parentVersionId ?? null,
-        datasetVersion.tableName,
+        datasetVersion.versionName ?? null,
+        datasetVersion.description ?? null,
+        datasetVersion.storageFormat,
+        datasetVersion.storageUri,
         datasetVersion.rowCount ?? null,
         datasetVersion.columnCount ?? null,
-        datasetVersion.status,
-        datasetVersion.errorMessage ?? null,
+        datasetVersion.sizeBytes ?? null,
+        datasetVersion.schemaJson ?? null,
+        datasetVersion.createdByOperationId ?? null,
         datasetVersion.createdAt,
-        datasetVersion.updatedAt,
       );
 
     return datasetVersion;
@@ -117,17 +120,18 @@ export class SqliteDatasetVersionRepository
     return {
       id: row.id,
       workspaceId: row.workspace_id,
-      dataSourceId: row.data_source_id,
+      datasetId: row.dataset_id,
       versionNumber: row.version_number,
-      sourceKind: row.source_kind as DatasetVersionSourceKind,
-      parentVersionId: row.parent_version_id ?? undefined,
-      tableName: row.table_name,
+      versionName: row.version_name ?? undefined,
+      description: row.description ?? undefined,
+      storageFormat: row.storage_format as DatasetStorageFormat,
+      storageUri: row.storage_uri,
       rowCount: row.row_count ?? undefined,
       columnCount: row.column_count ?? undefined,
-      status: row.status as DatasetVersionStatus,
-      errorMessage: row.error_message ?? undefined,
+      sizeBytes: row.size_bytes ?? undefined,
+      schemaJson: row.schema_json ?? undefined,
+      createdByOperationId: row.created_by_operation_id ?? undefined,
       createdAt: row.created_at,
-      updatedAt: row.updated_at,
     };
   }
 }

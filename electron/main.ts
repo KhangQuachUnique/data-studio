@@ -14,11 +14,15 @@ import type { ImportCsvInput } from "@shared/types/DataSource";
 import { createSqliteConnection, type SqliteDatabase } from "@core/db/SqliteConnection";
 import { SqliteMigrationRunner } from "@core/db/SqliteMigrationRunner";
 import { SqliteDataSourceRepository } from "@core/repositories/data-source/DataSourceRepositoryImpl";
+import { SqliteDatasetRepository } from "@core/repositories/dataset/DatasetRepositoryImpl";
 import { SqliteDatasetVersionRepository } from "@core/repositories/dataset-version/DatasetVersionRepositoryImpl";
+import { SqliteDatasetVersionColumnRepository } from "@core/repositories/dataset-version-column/DatasetVersionColumnRepositoryImpl";
+import { SqliteOperationRepository } from "@core/repositories/operation/OperationRepositoryImpl";
 import { SqliteAppSettingsRepository } from "@core/repositories/settings/SqliteAppSettingsRepository";
 import { SqliteWorkspaceRepository } from "@core/repositories/workspace/WorkspaceRepositoryImpl";
 import { AppBootstrapService } from "@core/services/AppBootstrapService";
 import { DataSourceService } from "@core/services/DataSourceService";
+import { DuckDbService } from "@core/services/DuckDbService";
 import { WorkspaceService } from "@core/services/WorkspaceService";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -51,8 +55,13 @@ async function createContainer(): Promise<MainContainer> {
 
   const workspaceRepository = new SqliteWorkspaceRepository(db);
   const dataSourceRepository = new SqliteDataSourceRepository(db);
+  const datasetRepository = new SqliteDatasetRepository(db);
   const datasetVersionRepository = new SqliteDatasetVersionRepository(db);
+  const datasetVersionColumnRepository =
+    new SqliteDatasetVersionColumnRepository(db);
+  const operationRepository = new SqliteOperationRepository(db);
   const appSettingsRepository = new SqliteAppSettingsRepository(db);
+  const duckDbService = new DuckDbService();
   const workspaceService = new WorkspaceService(
     workspaceRepository,
     appPaths.workspacesPath,
@@ -61,7 +70,11 @@ async function createContainer(): Promise<MainContainer> {
   const dataSourceService = new DataSourceService(
     workspaceRepository,
     dataSourceRepository,
+    datasetRepository,
     datasetVersionRepository,
+    datasetVersionColumnRepository,
+    operationRepository,
+    duckDbService,
   );
 
   return {
@@ -152,6 +165,27 @@ function registerIpcHandlers(dependencies: MainContainer): void {
     "dataSource:importCsv",
     (_event, input: ImportCsvInput) => {
       return dependencies.dataSourceService.importCsv(input);
+    },
+  );
+
+  ipcMain.handle(
+    "dataSource:preview",
+    (_event, workspaceId: string, dataSourceId: string, rowLimit?: number) => {
+      return dependencies.dataSourceService.previewDataSource(
+        workspaceId,
+        dataSourceId,
+        rowLimit,
+      );
+    },
+  );
+
+  ipcMain.handle(
+    "dataSource:delete",
+    (_event, workspaceId: string, dataSourceId: string) => {
+      return dependencies.dataSourceService.deleteDataSource(
+        workspaceId,
+        dataSourceId,
+      );
     },
   );
 }

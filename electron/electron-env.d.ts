@@ -34,9 +34,18 @@ interface Window {
     selectCsvFile: () => Promise<string | null>;
     listDataSources: (
       workspaceId: string,
-    ) => Promise<import("@shared/types/DataSource").DataSource[]>;
+    ) => Promise<import("@shared/types/DataSource").DataSourceListItem[]>;
     importCsv: (
       input: import("@shared/types/DataSource").ImportCsvInput,
     ) => Promise<import("@shared/types/DataSource").ImportCsvResult>;
+    previewDataSource: (
+      workspaceId: string,
+      dataSourceId: string,
+      rowLimit?: number,
+    ) => Promise<import("@shared/types/DataSource").DataSourcePreview>;
+    deleteDataSource: (
+      workspaceId: string,
+      dataSourceId: string,
+    ) => Promise<void>;
   };
 }

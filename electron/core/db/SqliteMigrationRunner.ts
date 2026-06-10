@@ -18,6 +18,7 @@ export class SqliteMigrationRunner {
 
   run(): void {
     this.createMigrationsTableIfNotExists();
+    this.resetLegacySchemaIfNeeded();
 
     const migrations = this.loadMigrationsFromDirectory();
 
@@ -50,6 +51,70 @@ export class SqliteMigrationRunner {
         applied_at TEXT NOT NULL
       );
     `);
+  }
+
+  private resetLegacySchemaIfNeeded(): void {
+    if (!this.tableExists("workspaces")) {
+      return;
+    }
+
+    const hasNewWorkspacePath = this.columnExists("workspaces", "root_path");
+    const hasLegacyDataSourceTableName =
+      this.tableExists("data_sources") &&
+      this.columnExists("data_sources", "table_name");
+
+    if (hasNewWorkspacePath && !hasLegacyDataSourceTableName) {
+      return;
+    }
+
+    const tableRows = this.db
+      .prepare(
+        `
+        SELECT name
+        FROM sqlite_master
+        WHERE type = 'table'
+          AND name NOT LIKE 'sqlite_%'
+        `,
+      )
+      .all() as Array<{ name: string }>;
+
+    this.db.pragma("foreign_keys = OFF");
+    try {
+      for (const row of tableRows) {
+        this.db.exec(`DROP TABLE IF EXISTS ${this.escapeIdentifier(row.name)}`);
+      }
+    } finally {
+      this.db.pragma("foreign_keys = ON");
+    }
+
+    this.createMigrationsTableIfNotExists();
+  }
+
+  private tableExists(tableName: string): boolean {
+    const row = this.db
+      .prepare(
+        `
+        SELECT name
+        FROM sqlite_master
+        WHERE type = 'table'
+          AND name = ?
+        `,
+      )
+      .get(tableName);
+
+    return !!row;
+  }
+
+  private columnExists(tableName: string, columnName: string): boolean {
+    const rows = this.db
+      .prepare(`PRAGMA table_info(${this.escapeIdentifier(tableName)})`)
+      .all() as Array<{ name: string }>;
+
+    return rows.some((row) => row.name === columnName);
+  }
+
+  private escapeIdentifier(identifier: string): string {
+    return `"${identifier.replace(/"/g, '""')}"`;
   }
 
   private isApplied(version: number): boolean {

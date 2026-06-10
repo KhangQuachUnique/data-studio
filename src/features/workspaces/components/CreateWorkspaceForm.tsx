@@ -38,8 +38,8 @@ export function CreateWorkspaceForm({
   return (
     <form className="workspace-form" onSubmit={handleSubmit}>
       <div className="form-header">
-        <h2>Create workspace</h2>
-        <p className="muted">Creates SQLite metadata and local directories.</p>
+        <h2>New workspace</h2>
+        <p className="muted">Create isolated local storage for a project.</p>
       </div>
       <label>
         Name
@@ -55,7 +55,7 @@ export function CreateWorkspaceForm({
           value={description}
           onChange={(event) => setDescription(event.target.value)}
           placeholder="Optional notes for this workspace"
-          rows={4}
+          rows={3}
         />
       </label>
       <button disabled={isCreating} type="submit">

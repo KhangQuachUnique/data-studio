@@ -71,3 +71,58 @@ Reasons:
 - Keeps the workspace screen easier to scan.
 - Makes imported datasets the main object of attention.
 - Avoids repeating the same controls in multiple panels.
+
+## 2026-06-06 - Compact operational UI scale
+
+DataPrep Studio should use a compact desktop interface with dense but readable spacing. Normal text should stay around 12-14px, headings around 16-20px, buttons around 32-36px tall, slim panels with 12-16px padding, and small icons around 16-18px. Future UI work should follow `project/context/ui-guidelines.md`.
+
+Reasons:
+- The app is an operational data-prep workbench, not a marketing site.
+- Users need to scan lists, tables, workspace state, and data details quickly.
+- The visual direction should feel closer to Jira, Linear, Notion database, or GitHub Projects.
+
+## 2026-06-06 - Lightweight UI libraries allowed
+
+Future UI/component work may use lightweight libraries when they speed up implementation or improve polish without adding excessive bundle weight. `react-icons` is acceptable for shared icons.
+
+Reasons:
+- Reusing focused libraries keeps implementation fast and consistent.
+- A shared icon source avoids one-off SVGs and inconsistent visual weight.
+- Heavy component kits should still be avoided unless the product benefit is clear.
+
+## 2026-06-09 - Parquet as canonical dataset storage
+
+Imported and transformed dataset versions are stored as Parquet files in the workspace. DuckDB is used as a processing/query engine over files, not as the canonical storage layer and not as persistent per-dataset tables.
+
+Reasons:
+- Parquet gives each dataset version a portable immutable artifact.
+- The SQLite metadata model can point to `dataset_versions.storage_uri` instead of DuckDB table names.
+- Future transforms can consistently read one Parquet version and write a new Parquet version.
+- The app avoids coupling dataset lifecycle to persistent DuckDB table cleanup.
+
+## 2026-06-09 - Clean schema rebuild for MVP metadata
+
+The early Phase 1/2 metadata schema was replaced by a clean `001_init.sql` based on the final MVP schema. Old dev metadata databases are allowed to reset automatically when a legacy schema is detected.
+
+Reasons:
+- The app is still in early MVP development.
+- Supporting old table-centric metadata would add migration complexity with little value.
+- A clean schema makes source, dataset, version, schema, profile, and operation responsibilities clear.
+
+## 2026-06-09 - DuckDB in-memory engine instances
+
+DuckDB service operations use in-memory DuckDB instances per operation. They read CSV/Parquet paths and write Parquet files, then close the connection and instance.
+
+Reasons:
+- The workspace DuckDB file is no longer needed as dataset storage.
+- Avoids native lifecycle/cache problems seen with `DuckDBInstance.fromCache(...)`.
+- Keeps DuckDB usage aligned with the processing-engine role.
+
+## 2026-06-09 - Unsigned Windows MVP builds skip executable signing/editing
+
+Windows MVP builds disable `signAndEditExecutable` in `electron-builder.json5`.
+
+Reasons:
+- The local Windows environment lacks symlink privileges needed while extracting `winCodeSign`.
+- MVP builds are currently unsigned development artifacts.
+- Release signing can be re-enabled later with certificate setup and appropriate Windows privileges.

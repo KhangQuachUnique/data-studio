@@ -22,4 +22,17 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.invoke("dataSource:list", workspaceId),
   importCsv: (input: ImportCsvInput) =>
     ipcRenderer.invoke("dataSource:importCsv", input),
+  previewDataSource: (
+    workspaceId: string,
+    dataSourceId: string,
+    rowLimit?: number,
+  ) =>
+    ipcRenderer.invoke(
+      "dataSource:preview",
+      workspaceId,
+      dataSourceId,
+      rowLimit,
+    ),
+  deleteDataSource: (workspaceId: string, dataSourceId: string) =>
+    ipcRenderer.invoke("dataSource:delete", workspaceId, dataSourceId),
 });

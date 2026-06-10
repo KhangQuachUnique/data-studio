@@ -45,3 +45,31 @@
 - Allowed archived workspaces to remain readable while blocking new CSV imports.
 - Simplified the workspace shell into a cleaner studio-style layout.
 - Removed duplicated quick actions and made the data-source table the main observation surface.
+
+## 2026-06-06 - DuckDB-backed CSV import and preview
+
+- Added `@duckdb/node-api` and a `DuckDbService` for workspace DuckDB table operations.
+- Updated CSV import so copied raw files are materialized into `workspace.duckdb` tables.
+- Switched import row/column counts from the basic line parser to DuckDB table queries.
+- Added a bounded `dataSource:preview` IPC/preload flow.
+- Added on-demand 100-row preview tables inside the data-source details UI.
+
+## 2026-06-09 - Parquet-first schema rebuild
+
+- Rebuilt `001_init.sql` around the final MVP schema from the report: sources, datasets, versions, version columns, profile reports, column profile reports, and operations.
+- Removed the old Phase 2 migration because the MVP metadata model is now rebuilt cleanly from the start.
+- Added legacy schema reset logic for early dev databases that still had the old `workspaces.path` and DuckDB-table metadata model.
+- Updated shared types and SQLite repositories for the new source/dataset/version/operation split.
+
+## 2026-06-09 - CSV import now produces Parquet versions
+
+- Updated CSV import so a successful import creates `data/datasets/{datasetId}/versions/v1/data.parquet`.
+- Added operation tracking for import start, success, failure, result stats, and error messages.
+- Added dataset version column persistence from Parquet schema inspection.
+- Updated preview to query `read_parquet(...)` directly instead of reading a persistent DuckDB table.
+- Resolved the DuckDB `bad_weak_ptr` import failure by avoiding native logical type wrappers and using SQL `DESCRIBE` for schema inspection.
+
+## 2026-06-09 - Build stabilization
+
+- Disabled Windows executable signing/editing for unsigned MVP builds to avoid `winCodeSign` symlink extraction failures.
+- Verified `npx tsc --noEmit`, `npm run lint`, and `npm run build`.

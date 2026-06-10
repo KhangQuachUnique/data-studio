@@ -154,6 +154,7 @@ export function useWorkspaces() {
     archiveWorkspace,
     closeWorkspace,
     createWorkspace,
+    loadWorkspaceDetail,
     loadWorkspaces,
     openWorkspace,
     openWorkspaceFolder,

@@ -21,9 +21,9 @@ export function WorkspaceDiagnostics({
   return (
     <section className="diagnostics">
       <div className="metric-card">
-        <span>Total workspaces</span>
+        <span>Workspaces</span>
         <strong>{workspaces.length}</strong>
-        <p>SQLite records loaded through IPC.</p>
+        <p>Total records.</p>
       </div>
       <div className="metric-card">
         <span>Active</span>
@@ -31,17 +31,17 @@ export function WorkspaceDiagnostics({
         <p>{archivedCount} archived.</p>
       </div>
       <div className="metric-card">
-        <span>IPC status</span>
+        <span>Status</span>
         <strong>{isLoading || isCreating ? "Busy" : "Ready"}</strong>
-        <p>Preload bridge is responding.</p>
+        <p>Local app bridge.</p>
       </div>
       <div className="metric-card">
-        <span>Latest workspace</span>
+        <span>Latest</span>
         <strong>{latestWorkspace?.name ?? "None"}</strong>
         <p>
           {latestWorkspace
             ? `Updated ${formatDateTime(latestWorkspace.updatedAt)}`
-            : "Create one to validate the flow."}
+            : "No workspace yet."}
         </p>
       </div>
     </section>
