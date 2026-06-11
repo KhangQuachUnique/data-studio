@@ -1,5 +1,5 @@
 import { FiArchive, FiFolder, FiRotateCcw } from "react-icons/fi";
-import type { Workspace } from "@shared/types/Workspace";
+import type { Workspace } from "@shared/workspace/entities";
 import { formatDateTime } from "@renderer/shared/lib/formatDateTime";
 import { Button } from "@renderer/shared/ui/Button";
 import { cn } from "@renderer/shared/lib/cn";

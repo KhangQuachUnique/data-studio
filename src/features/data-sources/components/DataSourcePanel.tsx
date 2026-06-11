@@ -23,8 +23,8 @@ import {
 import type {
   DataSource,
   DataSourceListItem,
-  DatasetVersion,
-} from "@shared/types/DataSource";
+} from "@shared/data-source/entities";
+import type { DatasetVersion } from "@shared/dataset-version/entities";
 import type { useDataSources } from "../hooks/useDataSources";
 
 type DataSourceState = ReturnType<typeof useDataSources>;

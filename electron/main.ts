@@ -9,21 +9,30 @@ import {
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import type { CreateWorkspaceInput } from "@shared/types/Workspace";
-import type { ImportCsvInput } from "@shared/types/DataSource";
+import type { ImportCsvInput } from "@shared/data-source/dtos";
+import type { CreateWorkspaceInput } from "@shared/workspace/dtos";
 import { createSqliteConnection, type SqliteDatabase } from "@core/db/SqliteConnection";
 import { SqliteMigrationRunner } from "@core/db/SqliteMigrationRunner";
-import { SqliteDataSourceRepository } from "@core/repositories/data-source/DataSourceRepositoryImpl";
-import { SqliteDatasetRepository } from "@core/repositories/dataset/DatasetRepositoryImpl";
-import { SqliteDatasetVersionRepository } from "@core/repositories/dataset-version/DatasetVersionRepositoryImpl";
-import { SqliteDatasetVersionColumnRepository } from "@core/repositories/dataset-version-column/DatasetVersionColumnRepositoryImpl";
-import { SqliteOperationRepository } from "@core/repositories/operation/OperationRepositoryImpl";
-import { SqliteAppSettingsRepository } from "@core/repositories/settings/SqliteAppSettingsRepository";
-import { SqliteWorkspaceRepository } from "@core/repositories/workspace/WorkspaceRepositoryImpl";
+import {
+  DataSourceService,
+  SqliteDataSourceRepository,
+  SqliteDatasetRepository,
+  SqliteDatasetVersionColumnRepository,
+  SqliteDatasetVersionRepository,
+  SqliteOperationRepository,
+} from "@core/modules/data-source";
+import {
+  DataVersionReportService,
+  DuckDbProfileEngine,
+  SqliteDatasetVersionReportRepository,
+} from "@core/modules/profile";
+import { SqliteAppSettingsRepository } from "@core/modules/settings";
+import {
+  SqliteWorkspaceRepository,
+  WorkspaceService,
+} from "@core/modules/workspace";
 import { AppBootstrapService } from "@core/services/AppBootstrapService";
-import { DataSourceService } from "@core/services/DataSourceService";
 import { DuckDbService } from "@core/services/DuckDbService";
-import { WorkspaceService } from "@core/services/WorkspaceService";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -40,6 +49,7 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
 interface MainContainer {
   db: SqliteDatabase;
   dataSourceService: DataSourceService;
+  dataVersionReportService: DataVersionReportService;
   workspaceService: WorkspaceService;
 }
 
@@ -59,9 +69,18 @@ async function createContainer(): Promise<MainContainer> {
   const datasetVersionRepository = new SqliteDatasetVersionRepository(db);
   const datasetVersionColumnRepository =
     new SqliteDatasetVersionColumnRepository(db);
+  const datasetVersionReportRepository =
+    new SqliteDatasetVersionReportRepository(db);
   const operationRepository = new SqliteOperationRepository(db);
   const appSettingsRepository = new SqliteAppSettingsRepository(db);
   const duckDbService = new DuckDbService();
+  const datasetProfileEngine = new DuckDbProfileEngine();
+  const dataVersionReportService = new DataVersionReportService(
+    workspaceRepository,
+    datasetVersionRepository,
+    datasetVersionReportRepository,
+    datasetProfileEngine,
+  );
   const workspaceService = new WorkspaceService(
     workspaceRepository,
     appPaths.workspacesPath,
@@ -80,6 +99,7 @@ async function createContainer(): Promise<MainContainer> {
   return {
     db,
     dataSourceService,
+    dataVersionReportService,
     workspaceService,
   };
 }

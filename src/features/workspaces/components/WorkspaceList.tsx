@@ -1,5 +1,5 @@
 import { FiPlus, FiRefreshCw } from "react-icons/fi";
-import type { Workspace } from "@shared/types/Workspace";
+import type { Workspace } from "@shared/workspace/entities";
 import { Button } from "@renderer/shared/ui/Button";
 import { Card } from "@renderer/shared/ui/Card";
 import { WorkspaceListItem } from "./WorkspaceListItem";

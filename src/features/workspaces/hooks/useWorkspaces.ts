@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import type {
   CreateWorkspaceInput,
+} from "@shared/workspace/dtos";
+import type {
   Workspace,
   WorkspaceDetail,
-} from "@shared/types/Workspace";
+} from "@shared/workspace/entities";
 import { getErrorMessage } from "@renderer/shared/lib/getErrorMessage";
 import { workspaceApi } from "../api/workspaceApi";
 

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type {
   DataSourceListItem,
   DataSourcePreview,
-} from "@shared/types/DataSource";
+} from "@shared/data-source/entities";
 import { getErrorMessage } from "@renderer/shared/lib/getErrorMessage";
 import { dataSourceApi } from "../api/dataSourceApi";
 

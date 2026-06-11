@@ -1,8 +1,5 @@
-import type {
-  CreateWorkspaceInput,
-  Workspace,
-  WorkspaceDetail,
-} from "@shared/types/Workspace";
+import type { CreateWorkspaceInput } from "@shared/workspace/dtos";
+import type { Workspace, WorkspaceDetail } from "@shared/workspace/entities";
 
 export const workspaceApi = {
   listWorkspaces(): Promise<Workspace[]> {

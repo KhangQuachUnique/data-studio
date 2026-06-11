@@ -1,4 +1,4 @@
-import type { WorkspaceDetail } from "@shared/types/Workspace";
+import type { WorkspaceDetail } from "@shared/workspace/entities";
 import { formatDateTime } from "@renderer/shared/lib/formatDateTime";
 import { Badge } from "@renderer/shared/ui/Badge";
 import { Card } from "@renderer/shared/ui/Card";

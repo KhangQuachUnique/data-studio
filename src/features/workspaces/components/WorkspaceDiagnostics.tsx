@@ -1,4 +1,4 @@
-import type { Workspace } from "@shared/types/Workspace";
+import type { Workspace } from "@shared/workspace/entities";
 import { formatDateTime } from "@renderer/shared/lib/formatDateTime";
 
 interface WorkspaceDiagnosticsProps {

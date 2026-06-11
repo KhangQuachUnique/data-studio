@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { CreateWorkspaceInput } from "@shared/types/Workspace";
-import type { ImportCsvInput } from "@shared/types/DataSource";
+import type { ImportCsvInput } from "@shared/data-source/dtos";
+import type { CreateWorkspaceInput } from "@shared/workspace/dtos";
 
 contextBridge.exposeInMainWorld("api", {
   listWorkspaces: () => ipcRenderer.invoke("workspace:list"),

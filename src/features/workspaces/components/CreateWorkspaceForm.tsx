@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import type { CreateWorkspaceInput } from "@shared/types/Workspace";
+import type { CreateWorkspaceInput } from "@shared/workspace/dtos";
 
 interface CreateWorkspaceFormProps {
   error: string | null;

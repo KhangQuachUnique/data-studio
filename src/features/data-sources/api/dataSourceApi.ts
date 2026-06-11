@@ -1,9 +1,8 @@
 import type {
   DataSourceListItem,
   DataSourcePreview,
-  ImportCsvInput,
-  ImportCsvResult,
-} from "@shared/types/DataSource";
+} from "@shared/data-source/entities";
+import type { ImportCsvInput, ImportCsvResult } from "@shared/data-source/dtos";
 
 export const dataSourceApi = {
   selectCsvFile(): Promise<string | null> {

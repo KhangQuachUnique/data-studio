@@ -10,39 +10,39 @@ declare namespace NodeJS {
 interface Window {
   api: {
     listWorkspaces: () => Promise<
-      import("@shared/types/Workspace").Workspace[]
+      import("@shared/workspace/entities").Workspace[]
     >;
     getWorkspace: (
       workspaceId: string,
-    ) => Promise<import("@shared/types/Workspace").WorkspaceDetail>;
+    ) => Promise<import("@shared/workspace/entities").WorkspaceDetail>;
     getLastOpenedWorkspace: () => Promise<
-      import("@shared/types/Workspace").Workspace | null
+      import("@shared/workspace/entities").Workspace | null
     >;
     setLastOpenedWorkspace: (
       workspaceId: string,
-    ) => Promise<import("@shared/types/Workspace").Workspace>;
+    ) => Promise<import("@shared/workspace/entities").Workspace>;
     createWorkspace: (
-      input: import("@shared/types/Workspace").CreateWorkspaceInput,
-    ) => Promise<import("@shared/types/Workspace").Workspace>;
+      input: import("@shared/workspace/dtos").CreateWorkspaceInput,
+    ) => Promise<import("@shared/workspace/entities").Workspace>;
     archiveWorkspace: (
       workspaceId: string,
-    ) => Promise<import("@shared/types/Workspace").Workspace>;
+    ) => Promise<import("@shared/workspace/entities").Workspace>;
     unarchiveWorkspace: (
       workspaceId: string,
-    ) => Promise<import("@shared/types/Workspace").Workspace>;
+    ) => Promise<import("@shared/workspace/entities").Workspace>;
     openWorkspaceFolder: (workspaceId: string) => Promise<void>;
     selectCsvFile: () => Promise<string | null>;
     listDataSources: (
       workspaceId: string,
-    ) => Promise<import("@shared/types/DataSource").DataSourceListItem[]>;
+    ) => Promise<import("@shared/data-source/entities").DataSourceListItem[]>;
     importCsv: (
-      input: import("@shared/types/DataSource").ImportCsvInput,
-    ) => Promise<import("@shared/types/DataSource").ImportCsvResult>;
+      input: import("@shared/data-source/dtos").ImportCsvInput,
+    ) => Promise<import("@shared/data-source/dtos").ImportCsvResult>;
     previewDataSource: (
       workspaceId: string,
       dataSourceId: string,
       rowLimit?: number,
-    ) => Promise<import("@shared/types/DataSource").DataSourcePreview>;
+    ) => Promise<import("@shared/data-source/entities").DataSourcePreview>;
     deleteDataSource: (
       workspaceId: string,
       dataSourceId: string,

@@ -14,10 +14,10 @@ import {
 import { DataSourcePanel } from "@renderer/features/data-sources/components/DataSourcePanel";
 import { useDataSources } from "@renderer/features/data-sources/hooks/useDataSources";
 import { CurrentWorkspacePanel } from "@renderer/features/workspaces/components/CurrentWorkspacePanel";
-import type { DataSourceListItem } from "@shared/types/DataSource";
+import type { DataSourceListItem } from "@shared/data-source/entities";
 import { appPaths, isWorkspaceTab } from "@renderer/shared/constants/appPaths";
 import type { useWorkspaces } from "@renderer/features/workspaces/hooks/useWorkspaces";
-import type { WorkspaceDetail } from "@shared/types/Workspace";
+import type { WorkspaceDetail } from "@shared/workspace/entities";
 import { cn } from "@renderer/shared/lib/cn";
 import { Button } from "@renderer/shared/ui/Button";
 import { Card } from "@renderer/shared/ui/Card";
