@@ -245,9 +245,12 @@ Current import behavior:
 - Updates operation to `success` with `output_version_id` and result stats.
 - Updates operation to `failed` with `error_message` if conversion fails.
 
-## 3. Shared Types
+## 3. Shared Contracts
 
-Main file: `shared/types/DataSource.ts`
+Main files:
+
+- Entity contracts: `shared/*/entities.ts`
+- IPC DTO contracts: `shared/*/dtos.ts` and `shared/*/dto/*`
 
 Important domain types:
 

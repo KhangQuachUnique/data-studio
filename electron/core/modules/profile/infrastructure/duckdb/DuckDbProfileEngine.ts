@@ -6,7 +6,7 @@ import type {
   DatasetProfileColumnResult,
   DatasetProfileInput,
   DatasetProfileResult,
-} from "../../application/DatasetProfileDtos";
+} from "../../application/DatasetProfileEngineTypes";
 
 type DuckDbConnection = Awaited<ReturnType<DuckDBInstance["connect"]>>;
 
@@ -26,11 +26,15 @@ interface DatasetAggregateRow {
 interface ColumnAggregateRow {
   row_count?: unknown;
   non_null_count?: unknown;
+  non_missing_count?: unknown;
   null_count?: unknown;
   empty_string_count?: unknown;
   unique_count?: unknown;
   min_value?: unknown;
   max_value?: unknown;
+  numeric_count?: unknown;
+  numeric_min_value?: unknown;
+  numeric_max_value?: unknown;
 }
 
 export class DuckDbProfileEngine implements DatasetProfileEngine {
@@ -233,32 +237,46 @@ export class DuckDbProfileEngine implements DatasetProfileEngine {
     rowCount: number,
   ): Promise<DatasetProfileColumnResult> {
     const columnSql = this.sqlIdentifier(column.name);
+    const numericSql = `TRY_CAST(${this.normalizedTextValueSql(columnSql)} AS DOUBLE)`;
     const reader = await connection.runAndReadAll(
       `
       SELECT
         count(*) AS row_count,
         SUM(CASE WHEN ${columnSql} IS NOT NULL THEN 1 ELSE 0 END) AS non_null_count,
+        SUM(CASE WHEN ${this.isPresentSql(column)} THEN 1 ELSE 0 END) AS non_missing_count,
         SUM(CASE WHEN ${columnSql} IS NULL THEN 1 ELSE 0 END) AS null_count,
         ${this.isTextColumn(column) ? `SUM(CASE WHEN ${columnSql} = '' THEN 1 ELSE 0 END)` : "0"} AS empty_string_count,
         count(DISTINCT ${columnSql}) AS unique_count,
         CAST(min(${columnSql}) AS VARCHAR) AS min_value,
-        CAST(max(${columnSql}) AS VARCHAR) AS max_value
+        CAST(max(${columnSql}) AS VARCHAR) AS max_value,
+        ${this.isTextColumn(column) ? `SUM(CASE WHEN ${numericSql} IS NOT NULL THEN 1 ELSE 0 END)` : "0"} AS numeric_count,
+        ${this.isTextColumn(column) ? `min(${numericSql})` : "NULL"} AS numeric_min_value,
+        ${this.isTextColumn(column) ? `max(${numericSql})` : "NULL"} AS numeric_max_value
       FROM ${this.readParquetSql(parquetPath)}
       `,
     );
     const aggregate = reader.getRowObjectsJson()[0] as ColumnAggregateRow;
     const nullCount = this.toNumber(aggregate.null_count);
     const emptyStringCount = this.toNumber(aggregate.empty_string_count);
+    const nonMissingCount = this.toNumber(aggregate.non_missing_count);
+    const numericCount = this.toNumber(aggregate.numeric_count);
     const uniqueCount = this.toNumber(aggregate.unique_count);
+    const isNumericTextColumn =
+      this.isTextColumn(column) && nonMissingCount > 0 && numericCount === nonMissingCount;
+    const inferredType = isNumericTextColumn ? "NUMBER" : column.dataType;
 
     return {
       columnName: column.name,
       declaredType: column.dataType,
       emptyStringCount,
       emptyStringRatio: this.ratio(emptyStringCount, rowCount),
-      inferredType: column.dataType,
-      maxValue: this.toOptionalString(aggregate.max_value),
-      minValue: this.toOptionalString(aggregate.min_value),
+      inferredType,
+      maxValue: isNumericTextColumn
+        ? this.toProfileValueString(aggregate.numeric_max_value)
+        : this.toOptionalString(aggregate.max_value),
+      minValue: isNumericTextColumn
+        ? this.toProfileValueString(aggregate.numeric_min_value)
+        : this.toOptionalString(aggregate.min_value),
       nonNullCount: this.toNumber(aggregate.non_null_count),
       nullCount,
       nullRatio: this.ratio(nullCount, rowCount),
@@ -266,7 +284,9 @@ export class DuckDbProfileEngine implements DatasetProfileEngine {
       rowCount: this.toNumber(aggregate.row_count),
       statsJson: JSON.stringify({
         declaredType: column.dataType,
+        inferredType,
         missingCount: nullCount + emptyStringCount,
+        numericCount,
       }),
       uniqueCount,
       uniqueRatio: this.ratio(uniqueCount, rowCount),
@@ -362,8 +382,16 @@ export class DuckDbProfileEngine implements DatasetProfileEngine {
     return `${columnSql} IS NULL OR ${columnSql} = ''`;
   }
 
+  private isPresentSql(column: ColumnSchema): string {
+    return `NOT (${this.isMissingSql(column)})`;
+  }
+
   private isTextColumn(column: ColumnSchema): boolean {
     return /CHAR|TEXT|STRING|VARCHAR/i.test(column.dataType);
+  }
+
+  private normalizedTextValueSql(columnSql: string): string {
+    return `NULLIF(TRIM(${columnSql}), '')`;
   }
 
   private readParquetSql(parquetPath: string): string {
@@ -385,6 +413,21 @@ export class DuckDbProfileEngine implements DatasetProfileEngine {
   private toOptionalString(value: unknown): string | undefined {
     if (value === null || value === undefined) {
       return undefined;
+    }
+
+    return String(value);
+  }
+
+  private toProfileValueString(value: unknown): string | undefined {
+    if (value === null || value === undefined) {
+      return undefined;
+    }
+
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return Number.isInteger(value) ? value.toLocaleString("en-US", {
+        maximumFractionDigits: 0,
+        useGrouping: false,
+      }) : String(value);
     }
 
     return String(value);

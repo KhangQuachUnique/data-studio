@@ -1,7 +1,7 @@
 import type {
   DatasetProfileInput,
   DatasetProfileResult,
-} from "./DatasetProfileDtos";
+} from "./DatasetProfileEngineTypes";
 
 export interface DatasetProfileEngine {
   profileDataset(input: DatasetProfileInput): Promise<DatasetProfileResult>;

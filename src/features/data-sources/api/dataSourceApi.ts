@@ -3,6 +3,10 @@ import type {
   DataSourcePreview,
 } from "@shared/data-source/entities";
 import type { ImportCsvInput, ImportCsvResult } from "@shared/data-source/dtos";
+import type {
+  GetDatasetVersionProfileReportResponseDto,
+  RunDatasetVersionProfileResponseDto,
+} from "@shared/profile/dtos";
 
 export const dataSourceApi = {
   selectCsvFile(): Promise<string | null> {
@@ -27,5 +31,17 @@ export const dataSourceApi = {
 
   deleteDataSource(workspaceId: string, dataSourceId: string): Promise<void> {
     return window.api.deleteDataSource(workspaceId, dataSourceId);
+  },
+
+  getDatasetVersionProfileReport(
+    datasetVersionId: string,
+  ): Promise<GetDatasetVersionProfileReportResponseDto> {
+    return window.api.getDatasetVersionProfileReport(datasetVersionId);
+  },
+
+  runDatasetVersionProfile(
+    datasetVersionId: string,
+  ): Promise<RunDatasetVersionProfileResponseDto> {
+    return window.api.runDatasetVersionProfile(datasetVersionId);
   },
 };

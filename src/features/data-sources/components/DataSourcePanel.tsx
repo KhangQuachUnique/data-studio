@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   FiArrowLeft,
   FiEye,
+  FiPlay,
   FiRefreshCw,
   FiTrash2,
   FiUpload,
@@ -25,10 +26,12 @@ import type {
   DataSourceListItem,
 } from "@shared/data-source/entities";
 import type { DatasetVersion } from "@shared/dataset-version/entities";
+import type { ColumnProfileReport } from "@shared/profile/entities";
 import type { useDataSources } from "../hooks/useDataSources";
 
 type DataSourceState = ReturnType<typeof useDataSources>;
 type PreviewState = DataSourceState["previews"][string];
+type ProfileState = DataSourceState["profiles"][string];
 
 interface DataSourcePanelProps {
   dataSourceState: DataSourceState;
@@ -48,8 +51,11 @@ export function DataSourcePanel({
     isImporting,
     isLoading,
     loadDataSources,
+    loadProfile,
     loadPreview,
+    profiles,
     previews,
+    runProfile,
   } = dataSourceState;
   const [selectedDataSourceId, setSelectedDataSourceId] = useState<
     string | null
@@ -92,9 +98,16 @@ export function DataSourcePanel({
           deletingIds={deletingIds}
           isReadOnly={isReadOnly}
           item={selectedItem}
+          loadProfile={loadProfile}
           loadPreview={loadPreview}
           onBack={() => setSelectedDataSourceId(null)}
+          profileState={
+            selectedItem.currentVersion
+              ? profiles[selectedItem.currentVersion.id]
+              : undefined
+          }
           previewState={previews[selectedItem.dataSource.id]}
+          runProfile={runProfile}
         />
       ) : (
         <DataSourceTableView
@@ -283,9 +296,12 @@ interface DataSourceDetailViewProps {
   deletingIds: string[];
   isReadOnly: boolean;
   item: DataSourceListItem;
+  loadProfile: (datasetVersionId: string) => Promise<void>;
   loadPreview: (dataSourceId: string) => Promise<void>;
   onBack: () => void;
+  profileState?: ProfileState;
   previewState?: PreviewState;
+  runProfile: (datasetVersionId: string) => Promise<void>;
 }
 
 function DataSourceDetailView({
@@ -293,11 +309,24 @@ function DataSourceDetailView({
   deletingIds,
   isReadOnly,
   item,
+  loadProfile,
   loadPreview,
   onBack,
+  profileState,
   previewState,
+  runProfile,
 }: DataSourceDetailViewProps) {
   const { dataSource, currentVersion, dataset } = item;
+
+  useEffect(() => {
+    if (!currentVersion) {
+      return;
+    }
+
+    if (!profileState?.hasLoaded && !profileState?.isLoading) {
+      void loadProfile(currentVersion.id);
+    }
+  }, [currentVersion, loadProfile, profileState]);
 
   return (
     <div className="grid gap-4">
@@ -349,12 +378,309 @@ function DataSourceDetailView({
 
       <VersionsBlock currentVersion={currentVersion} versionCount={item.versionCount} />
 
+      <DatasetProfileBlock
+        currentVersion={currentVersion}
+        isReadOnly={isReadOnly}
+        loadProfile={loadProfile}
+        profileState={profileState}
+        runProfile={runProfile}
+      />
+
       <DataSourcePreviewBlock
         dataSourceId={dataSource.id}
         loadPreview={loadPreview}
         previewState={previewState}
       />
     </div>
+  );
+}
+
+interface DatasetProfileBlockProps {
+  currentVersion?: DatasetVersion;
+  isReadOnly: boolean;
+  loadProfile: (datasetVersionId: string) => Promise<void>;
+  profileState?: ProfileState;
+  runProfile: (datasetVersionId: string) => Promise<void>;
+}
+
+function DatasetProfileBlock({
+  currentVersion,
+  isReadOnly,
+  loadProfile,
+  profileState,
+  runProfile,
+}: DatasetProfileBlockProps) {
+  const detail = profileState?.detail;
+  const report = detail?.profileReport;
+  const columnReports = detail?.columnReports ?? [];
+  const isBusy = Boolean(profileState?.isLoading || profileState?.isRunning);
+  const qualityIssues = readJsonArray<ProfileIssue>(report?.qualityIssuesJson);
+  const suggestedActions = readJsonArray<ProfileAction>(
+    report?.suggestedActionsJson,
+  );
+
+  return (
+    <section className="grid gap-4 rounded-lg border border-theme-plum/10 bg-white/55 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <span className="text-[0.7rem] font-extrabold uppercase text-theme-ink/68">
+            Profile
+          </span>
+          <strong className="block text-base">Dataset quality</strong>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            disabled={!currentVersion || profileState?.isLoading}
+            onClick={() => currentVersion && void loadProfile(currentVersion.id)}
+            variant="secondary"
+          >
+            <FiRefreshCw aria-hidden="true" />
+            {profileState?.isLoading ? "Loading..." : "Refresh"}
+          </Button>
+          <Button
+            disabled={!currentVersion || isReadOnly || isBusy}
+            onClick={() => currentVersion && void runProfile(currentVersion.id)}
+          >
+            {profileState?.isRunning ? (
+              <FiRefreshCw aria-hidden="true" />
+            ) : (
+              <FiPlay aria-hidden="true" />
+            )}
+            {isReadOnly
+              ? "Archived"
+              : profileState?.isRunning
+                ? "Profiling..."
+                : report
+                  ? "Run again"
+                  : "Run profile"}
+          </Button>
+        </div>
+      </div>
+
+      {!currentVersion ? (
+        <EmptyState title="No dataset version">
+          Import data before running a profile.
+        </EmptyState>
+      ) : null}
+
+      {profileState?.error ? (
+        <p className="text-sm font-semibold text-[#9F4959]">
+          {profileState.error}
+        </p>
+      ) : null}
+
+      {!report && currentVersion && profileState?.hasLoaded ? (
+        <EmptyState title="No profile yet">
+          Run a profile to inspect missing values, duplicates, and quality signals.
+        </EmptyState>
+      ) : null}
+
+      {report ? (
+        <>
+          <div className="grid gap-3 md:grid-cols-4">
+            <ProfileMetric
+              label="Quality score"
+              tone={getQualityTone(report.qualityScore)}
+              value={
+                report.qualityScore === undefined
+                  ? "Unknown"
+                  : `${report.qualityScore}/100`
+              }
+            />
+            <ProfileMetric
+              label="Missing cells"
+              value={formatRatioWithCount(
+                report.missingCellCount,
+                report.missingCellRatio,
+              )}
+            />
+            <ProfileMetric
+              label="Duplicate rows"
+              value={formatRatioWithCount(
+                report.duplicateRowCount,
+                report.duplicateRowRatio,
+              )}
+            />
+            <ProfileMetric
+              label="Empty rows"
+              value={formatRatioWithCount(
+                report.emptyRowCount,
+                report.emptyRowRatio,
+              )}
+            />
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <ProfileList
+              emptyText="No quality issues found."
+              items={qualityIssues.map((issue, index) => ({
+                badge: issue.severity ?? "info",
+                key: issue.code ?? issue.message ?? `quality_issue_${index}`,
+                text: issue.message ?? "Review this quality issue.",
+              }))}
+              title="Quality issues"
+            />
+            <ProfileList
+              emptyText="No suggested actions."
+              items={suggestedActions.map((action, index) => ({
+                badge: action.code,
+                key: action.code ?? action.message ?? `suggested_action_${index}`,
+                text: action.message ?? "Review this action.",
+              }))}
+              title="Suggested actions"
+            />
+          </div>
+
+          <ColumnProfileTable columnReports={columnReports} />
+        </>
+      ) : null}
+    </section>
+  );
+}
+
+interface ProfileMetricProps {
+  label: string;
+  tone?: "mint" | "peach" | "lavender";
+  value: string;
+}
+
+function ProfileMetric({ label, tone = "lavender", value }: ProfileMetricProps) {
+  const toneClass = {
+    lavender: "bg-theme-lilac/55",
+    mint: "bg-theme-sage",
+    peach: "bg-theme-butter",
+  }[tone];
+
+  return (
+    <div className={`${toneClass} rounded-lg p-3`}>
+      <span className="text-[0.7rem] font-extrabold uppercase text-theme-ink/68">
+        {label}
+      </span>
+      <strong className="mt-2 block text-xl font-semibold">{value}</strong>
+    </div>
+  );
+}
+
+interface ProfileListProps {
+  emptyText: string;
+  items: Array<{ badge?: string; key: string; text?: string }>;
+  title: string;
+}
+
+function ProfileList({ emptyText, items, title }: ProfileListProps) {
+  return (
+    <div className="rounded-lg border border-theme-plum/10 bg-theme-cream/50 p-3">
+      <h4 className="text-sm font-semibold">{title}</h4>
+      {items.length === 0 ? (
+        <p className="mt-3 text-sm text-theme-ink/65">{emptyText}</p>
+      ) : (
+        <ul className="mt-3 grid gap-2">
+          {items.map((item) => (
+            <li
+              className="flex items-start gap-2 rounded-lg bg-white/65 p-2 text-sm"
+              key={item.key}
+            >
+              {item.badge ? (
+                <Badge tone={getIssueTone(item.badge)}>{item.badge}</Badge>
+              ) : null}
+              <span className="min-w-0 text-theme-ink/78">{item.text}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+interface ColumnProfileTableProps {
+  columnReports: ColumnProfileReport[];
+}
+
+function ColumnProfileTable({ columnReports }: ColumnProfileTableProps) {
+  if (columnReports.length === 0) {
+    return (
+      <EmptyState title="No column report">
+        Run the profile again to refresh column-level stats.
+      </EmptyState>
+    );
+  }
+
+  return (
+    <section className="grid gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <span className="text-[0.7rem] font-extrabold uppercase text-theme-ink/68">
+            Columns
+          </span>
+          <strong className="block text-base">Column profile</strong>
+        </div>
+        <Badge tone="lavender">
+          {columnReports.length.toLocaleString()} column
+          {columnReports.length === 1 ? "" : "s"}
+        </Badge>
+      </div>
+      <TableContainer className="max-h-[420px]">
+        <Table className="min-w-[980px] table-fixed">
+          <colgroup>
+            <col className="w-[22%]" />
+            <col className="w-[13%]" />
+            <col className="w-[12%]" />
+            <col className="w-[12%]" />
+            <col className="w-[12%]" />
+            <col className="w-[14%]" />
+            <col className="w-[15%]" />
+          </colgroup>
+          <TableHead className="sticky top-0 bg-theme-lilac/45">
+            <TableRow>
+              <TableHeaderCell>Column</TableHeaderCell>
+              <TableHeaderCell>Type</TableHeaderCell>
+              <TableHeaderCell>Missing</TableHeaderCell>
+              <TableHeaderCell>Unique</TableHeaderCell>
+              <TableHeaderCell>Empty text</TableHeaderCell>
+              <TableHeaderCell>Min</TableHeaderCell>
+              <TableHeaderCell>Max</TableHeaderCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {columnReports.map((column) => (
+              <TableRow key={column.id}>
+                <TableCell>
+                  <strong className="block truncate font-semibold">
+                    {column.columnName}
+                  </strong>
+                  <small className="block text-xs text-theme-ink/58">
+                    #{column.ordinalPosition}
+                  </small>
+                </TableCell>
+                <TableCell>
+                  <Badge tone="neutral">
+                    {column.inferredType ?? column.declaredType ?? "unknown"}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  {formatRatioWithCount(column.nullCount, column.nullRatio)}
+                </TableCell>
+                <TableCell>
+                  {formatRatioWithCount(column.uniqueCount, column.uniqueRatio)}
+                </TableCell>
+                <TableCell>
+                  {formatRatioWithCount(
+                    column.emptyStringCount,
+                    column.emptyStringRatio,
+                  )}
+                </TableCell>
+                <TableCell className="truncate">
+                  {formatProfileValue(column.minValue)}
+                </TableCell>
+                <TableCell className="truncate">
+                  {formatProfileValue(column.maxValue)}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </section>
   );
 }
 
@@ -515,6 +841,79 @@ function DataSourcePreviewBlock({
       ) : null}
     </section>
   );
+}
+
+interface ProfileIssue {
+  code?: string;
+  message?: string;
+  severity?: string;
+}
+
+interface ProfileAction {
+  code?: string;
+  message?: string;
+}
+
+function readJsonArray<T>(json: string | undefined): T[] {
+  if (!json) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(json) as unknown;
+    return Array.isArray(parsed) ? (parsed as T[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function formatRatioWithCount(
+  count: number | undefined,
+  ratio: number | undefined,
+): string {
+  const countText = count?.toLocaleString() ?? "0";
+  const percentText =
+    ratio === undefined ? "0%" : `${Math.round(ratio * 1000) / 10}%`;
+
+  return `${countText} (${percentText})`;
+}
+
+function formatProfileValue(value: string | undefined): string {
+  if (!value) {
+    return "None";
+  }
+
+  return value;
+}
+
+function getQualityTone(
+  score: number | undefined,
+): ProfileMetricProps["tone"] {
+  if (score === undefined) {
+    return "lavender";
+  }
+
+  if (score >= 85) {
+    return "mint";
+  }
+
+  if (score >= 65) {
+    return "lavender";
+  }
+
+  return "peach";
+}
+
+function getIssueTone(value: string): "mint" | "lavender" | "peach" | "neutral" {
+  if (/high|empty|duplicate|missing/i.test(value)) {
+    return "peach";
+  }
+
+  if (/low|info/i.test(value)) {
+    return "mint";
+  }
+
+  return "lavender";
 }
 
 function formatFileSize(fileSizeBytes: number | undefined): string {

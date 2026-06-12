@@ -2,7 +2,15 @@ import type { DataSource } from "@shared/data-source/entities";
 import type { Dataset } from "@shared/dataset/entities";
 import type { DatasetVersion } from "@shared/dataset-version/entities";
 
-export type ProfileReportStatus = "pending" | "running" | "success" | "failed";
+export const ProfileReportStatus = {
+  PENDING: "pending",
+  RUNNING: "running",
+  SUCCESS: "success",
+  FAILED: "failed",
+} as const;
+
+export type ProfileReportStatus =
+  (typeof ProfileReportStatus)[keyof typeof ProfileReportStatus];
 
 export interface DatasetProfileReport {
   id: string;
@@ -71,5 +79,10 @@ export interface DataSourceProfileDetail {
   dataset?: Dataset;
   currentVersion?: DatasetVersion;
   profileReport?: DatasetProfileReport;
+  columnReports: ColumnProfileReport[];
+}
+
+export interface DatasetVersionProfileDetail {
+  profileReport: DatasetProfileReport;
   columnReports: ColumnProfileReport[];
 }

@@ -2,6 +2,7 @@ import type {
   ColumnProfileReport,
   DataSourceProfileDetail,
   DatasetProfileReport,
+  DatasetVersionProfileDetail,
 } from "../entities";
 
 export type DatasetProfileReportResponseDto = DatasetProfileReport;
@@ -12,7 +13,10 @@ export type ColumnProfileReportResponseDto = ColumnProfileReport;
 
 export type DataSourceProfileDetailResponseDto = DataSourceProfileDetail;
 
-export type GetDatasetVersionProfileReportResponseDto =
-  DatasetVersionReportResponseDto | null;
+export type DatasetVersionProfileDetailResponseDto = DatasetVersionProfileDetail;
 
-export type RunDatasetVersionProfileResponseDto = DatasetVersionReportResponseDto;
+export type GetDatasetVersionProfileReportResponseDto =
+  DatasetVersionProfileDetailResponseDto | null;
+
+export type RunDatasetVersionProfileResponseDto =
+  DatasetVersionProfileDetailResponseDto;

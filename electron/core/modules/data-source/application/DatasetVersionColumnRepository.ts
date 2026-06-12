@@ -2,4 +2,8 @@ import type { DatasetVersionColumn } from "@shared/dataset-version-column/entiti
 
 export interface DatasetVersionColumnRepository {
   createMany(columns: DatasetVersionColumn[]): Promise<DatasetVersionColumn[]>;
+
+  findByDatasetVersionId(
+    datasetVersionId: string,
+  ): Promise<DatasetVersionColumn[]>;
 }

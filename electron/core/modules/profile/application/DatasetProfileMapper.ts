@@ -1,5 +1,5 @@
 import type { DatasetVersionReportUpdate } from "./DatasetVersionReportRepository";
-import type { DatasetProfileResult } from "./DatasetProfileDtos";
+import type { DatasetProfileResult } from "./DatasetProfileEngineTypes";
 
 export class DatasetProfileMapper {
   static toReportUpdate(

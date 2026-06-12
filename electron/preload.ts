@@ -35,4 +35,8 @@ contextBridge.exposeInMainWorld("api", {
     ),
   deleteDataSource: (workspaceId: string, dataSourceId: string) =>
     ipcRenderer.invoke("dataSource:delete", workspaceId, dataSourceId),
+  getDatasetVersionProfileReport: (datasetVersionId: string) =>
+    ipcRenderer.invoke("profile:getDatasetVersionReport", datasetVersionId),
+  runDatasetVersionProfile: (datasetVersionId: string) =>
+    ipcRenderer.invoke("profile:runDatasetVersion", datasetVersionId),
 });

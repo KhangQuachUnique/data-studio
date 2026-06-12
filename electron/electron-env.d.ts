@@ -47,5 +47,11 @@ interface Window {
       workspaceId: string,
       dataSourceId: string,
     ) => Promise<void>;
+    getDatasetVersionProfileReport: (
+      datasetVersionId: string,
+    ) => Promise<import("@shared/profile/dtos").GetDatasetVersionProfileReportResponseDto>;
+    runDatasetVersionProfile: (
+      datasetVersionId: string,
+    ) => Promise<import("@shared/profile/dtos").RunDatasetVersionProfileResponseDto>;
   };
 }

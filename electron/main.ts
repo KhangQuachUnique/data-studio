@@ -22,8 +22,9 @@ import {
   SqliteOperationRepository,
 } from "@core/modules/data-source";
 import {
-  DataVersionReportService,
+  DatasetVersionReportService,
   DuckDbProfileEngine,
+  SqliteColumnProfileReportRepository,
   SqliteDatasetVersionReportRepository,
 } from "@core/modules/profile";
 import { SqliteAppSettingsRepository } from "@core/modules/settings";
@@ -49,7 +50,7 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
 interface MainContainer {
   db: SqliteDatabase;
   dataSourceService: DataSourceService;
-  dataVersionReportService: DataVersionReportService;
+  datasetVersionReportService: DatasetVersionReportService;
   workspaceService: WorkspaceService;
 }
 
@@ -71,14 +72,18 @@ async function createContainer(): Promise<MainContainer> {
     new SqliteDatasetVersionColumnRepository(db);
   const datasetVersionReportRepository =
     new SqliteDatasetVersionReportRepository(db);
+  const columnProfileReportRepository =
+    new SqliteColumnProfileReportRepository(db);
   const operationRepository = new SqliteOperationRepository(db);
   const appSettingsRepository = new SqliteAppSettingsRepository(db);
   const duckDbService = new DuckDbService();
   const datasetProfileEngine = new DuckDbProfileEngine();
-  const dataVersionReportService = new DataVersionReportService(
+  const datasetVersionReportService = new DatasetVersionReportService(
     workspaceRepository,
     datasetVersionRepository,
+    datasetVersionColumnRepository,
     datasetVersionReportRepository,
+    columnProfileReportRepository,
     datasetProfileEngine,
   );
   const workspaceService = new WorkspaceService(
@@ -99,7 +104,7 @@ async function createContainer(): Promise<MainContainer> {
   return {
     db,
     dataSourceService,
-    dataVersionReportService,
+    datasetVersionReportService,
     workspaceService,
   };
 }
@@ -205,6 +210,24 @@ function registerIpcHandlers(dependencies: MainContainer): void {
       return dependencies.dataSourceService.deleteDataSource(
         workspaceId,
         dataSourceId,
+      );
+    },
+  );
+
+  ipcMain.handle(
+    "profile:getDatasetVersionReport",
+    (_event, datasetVersionId: string) => {
+      return dependencies.datasetVersionReportService.getReportByDatasetVersionId(
+        datasetVersionId,
+      );
+    },
+  );
+
+  ipcMain.handle(
+    "profile:runDatasetVersion",
+    (_event, datasetVersionId: string) => {
+      return dependencies.datasetVersionReportService.runProfile(
+        datasetVersionId,
       );
     },
   );

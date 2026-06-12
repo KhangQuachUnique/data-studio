@@ -5,6 +5,7 @@ export type {
 export type {
   ColumnProfileReportResponseDto,
   DataSourceProfileDetailResponseDto,
+  DatasetVersionProfileDetailResponseDto,
   DatasetProfileReportResponseDto,
   DatasetVersionReportResponseDto,
   GetDatasetVersionProfileReportResponseDto,
